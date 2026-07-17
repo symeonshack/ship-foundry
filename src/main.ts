@@ -69,6 +69,11 @@ const initial: ScreenId =
 manager.show(initial);
 manager.start();
 
+// dev-only handle for driving the game in automated verification
+if (import.meta.env.DEV) {
+  (window as unknown as Record<string, unknown>).__game = { ctx, manager };
+}
+
 // wake-up beat on a fresh save
 if (isNewGame && !store.hasFlag(FLAGS.INTRO_DONE)) {
   store.setFlag(FLAGS.INTRO_DONE);

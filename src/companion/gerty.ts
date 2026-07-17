@@ -129,6 +129,9 @@ export class Gerty {
   ask(topicId: string): void {
     const topic = this.topics.find((t) => t.id === topicId);
     if (!topic) return;
+    // a direct question interrupts ambient chatter — answer immediately
+    this.queue = [];
+    this.busyUntil = 0;
     const open = topic.unlockFlag !== undefined && this.store.hasFlag(topic.unlockFlag) && topic.unlocked;
     if (open) {
       this.enqueue({ id: `topic:${topic.id}`, mood: 'say', text: topic.unlocked!, duration: Math.min(12, 2.5 + topic.unlocked!.length * 0.045) });

@@ -146,7 +146,7 @@ export class ShipyardScreen implements GameScreen {
         const marker = buildSocketMarker();
         marker.position.set(...sockets[i]!.pos);
         marker.rotation.set(...sockets[i]!.rot);
-        marker.rotateX(Math.PI / 2); // ring faces outward along socket +Y
+        marker.rotateX(-Math.PI / 2); // disc faces outward along socket +Y
         marker.userData = { parentUid: p.uid, socketIndex: i };
         this.placementGroups.get(p.uid)!.add(marker);
         this.markers.push(marker);
@@ -196,7 +196,11 @@ export class ShipyardScreen implements GameScreen {
     // otherwise: select an existing part for inspection/removal
     const meshes: THREE.Object3D[] = [];
     this.shipGroup.traverse((o) => {
-      if ((o as THREE.Mesh).isMesh && !this.markers.includes(o as THREE.Mesh)) meshes.push(o);
+      if (!(o as THREE.Mesh).isMesh) return;
+      for (let a: THREE.Object3D | null = o; a; a = a.parent) {
+        if (a.name === 'socket-marker') return;
+      }
+      meshes.push(o);
     });
     const hit = this.raycaster.intersectObjects(meshes, false)[0];
     if (hit) {

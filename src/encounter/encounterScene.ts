@@ -111,8 +111,8 @@ export class EncounterScreen implements GameScreen {
     for (let i = 0; i < SOCKETS.length; i++) {
       const marker = buildSocketMarker(0x59d6ff);
       marker.position.copy(this.socketWorld(i)).setY(PLAT_Y + 0.04);
+      marker.rotateX(-Math.PI / 2); // lie flat on the platform
       marker.userData.socket = i;
-      (marker.material as THREE.MeshStandardMaterial).opacity = 0.35;
       this.scene.add(marker);
       this.markers.push(marker);
     }
@@ -248,7 +248,7 @@ export class EncounterScreen implements GameScreen {
     m.opacity = 1;
     setTimeout(() => {
       m.emissive.setHex(0x59d6ff);
-      m.opacity = 0.35;
+      m.opacity = 0.16;
     }, 1500);
   }
 

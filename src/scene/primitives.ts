@@ -423,13 +423,22 @@ export function buildTerminal(owner: 'player' | 'collaborator'): THREE.Group {
   return g;
 }
 
+/**
+ * Socket marker: a faint clickable disc (so clicks in the middle land) with a
+ * bright ring on top. Faces +Z natively — rotate X by -π/2 to face up/outward
+ * along a socket's +Y.
+ */
 export function buildSocketMarker(color = C.accent): THREE.Mesh {
-  const ring = new THREE.Mesh(
-    new THREE.TorusGeometry(0.32, 0.035, 8, 20),
-    mat(color, { emissive: color, emissiveIntensity: 0.7, transparent: true, opacity: 0.85 }),
-  );
-  ring.rotation.x = Math.PI / 2;
-  return ring;
+  const discMat = mat(color, { emissive: color, emissiveIntensity: 0.4, transparent: true, opacity: 0.16 });
+  discMat.side = THREE.DoubleSide;
+  const disc = new THREE.Mesh(new THREE.CircleGeometry(0.42, 24), discMat);
+  disc.name = 'socket-marker';
+  const ringMat = mat(color, { emissive: color, emissiveIntensity: 0.7, transparent: true, opacity: 0.85 });
+  ringMat.side = THREE.DoubleSide;
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.035, 8, 20), ringMat);
+  ring.name = 'socket-marker';
+  disc.add(ring);
+  return disc;
 }
 
 // ---- star map markers ----
