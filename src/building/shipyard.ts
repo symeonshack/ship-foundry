@@ -144,7 +144,8 @@ export class ShipyardScreen implements GameScreen {
       for (let i = 0; i < sockets.length; i++) {
         if (sockets[i]!.type !== def.attachesTo || this.socketOccupied(p.uid, i)) continue;
         const marker = buildSocketMarker();
-        marker.position.set(...sockets[i]!.pos);
+        const outward = new THREE.Vector3(0, 1, 0).applyEuler(new THREE.Euler(...sockets[i]!.rot));
+        marker.position.set(...sockets[i]!.pos).addScaledVector(outward, 0.08);
         marker.rotation.set(...sockets[i]!.rot);
         marker.rotateX(-Math.PI / 2); // disc faces outward along socket +Y
         marker.userData = { parentUid: p.uid, socketIndex: i };
@@ -324,14 +325,34 @@ export class ShipyardScreen implements GameScreen {
       item.appendChild(el('span', 'cost', costToString(def.cost)));
       item.title = def.desc;
       item.addEventListener('click', () => {
+        if (this.selectedPart !== id && !store.canAfford(def.cost)) {
+          toast(`Not enough materials — ${def.name} needs ${costToString(def.cost)}`, 'warn');
+          return;
+        }
         this.selectedPart = this.selectedPart === id ? null : id;
         this.selectedPlacement = null;
         this.rebuildMarkers();
+        if (this.selectedPart && this.markers.length === 0) {
+          toast(`No free ${def.attachesTo} socket for the ${def.name}`, 'warn');
+        }
         this.renderPanel();
       });
       palette.appendChild(item);
     }
-    if (this.selectedPart) palette.appendChild(el('div', 'sub', 'Click a glowing socket on the ship to fit it.'));
+    if (this.selectedPart) {
+      if (this.markers.length > 0) {
+        palette.appendChild(el('div', 'sub', 'Click a glowing socket on the ship to fit it.'));
+      } else {
+        const need = PARTS[this.selectedPart].attachesTo;
+        palette.appendChild(
+          el(
+            'div',
+            'sub',
+            `⚠ Every ${need} socket is occupied. Hull frames add hardpoints — fit one on the free socket at the top of the stack (or remove a fitted part by clicking it).`,
+          ),
+        );
+      }
+    }
 
     // base module
     const baseBox = box('Fabricate — Base');
