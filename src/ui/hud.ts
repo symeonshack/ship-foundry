@@ -1,0 +1,230 @@
+import type { Ctx } from '../core/ctx';
+import { ALL_RESOURCE_IDS, RESOURCES, type RawResourceId } from '../core/resources';
+import { deriveStats } from '../building/shipStats';
+import { poiDef } from '../exploration/starSystem';
+import { clearSave } from '../save/persistence';
+import { el } from './panels';
+import type { SpokenLine } from '../companion/gerty';
+import type { ScreenId } from '../core/events';
+
+let toastArea: HTMLElement | null = null;
+
+export function toast(text: string, kind: 'info' | 'warn' | 'bad' | 'good' = 'info'): void {
+  if (!toastArea) return;
+  const t = el('div', `toast ${kind === 'info' ? '' : kind}`, text);
+  toastArea.appendChild(t);
+  setTimeout(() => t.remove(), 3600);
+}
+
+const SCREEN_HINTS: Record<ScreenId, string> = {
+  shipyard: 'SHIPYARD — pick a part, click a glowing socket to fit it. Click a fitted part to inspect or remove it. Watch the engines: glow means strain.',
+  starmap: 'STAR MAP — click a contact to survey it. The outer ring is your point of no return; the inner ring gets you home again.',
+  surface: 'SURFACE OPS — arm a rig, click a deposit to deploy. Hazards tick while you stay. The clock only matters down here.',
+  encounter: 'THE RELAY — no shared language. Place a module; watch what it keeps, what it removes, what it points at.',
+};
+
+export class Hud {
+  private chips = new Map<string, HTMLElement>();
+  private cargoChips: HTMLElement;
+  private fuelFill: HTMLElement;
+  private fuelLabel: HTMLElement;
+  private location: HTMLElement;
+  private navButtons = new Map<string, HTMLButtonElement>();
+  private gertyBox: HTMLElement;
+  private gertyText: HTMLElement;
+  private gertyTimer: number | null = null;
+  private typeTimer: number | null = null;
+  private modal: HTMLElement;
+  private hint: HTMLElement;
+
+  constructor(private ctx: Ctx) {
+    const hud = document.getElementById('hud')!;
+
+    // top bar
+    const top = el('div');
+    top.id = 'topbar';
+    const res = el('div');
+    res.id = 'resources';
+    for (const id of ALL_RESOURCE_IDS) {
+      const chip = el('span', `chip ${RESOURCES[id].kind}`);
+      const dot = el('span', 'dot');
+      dot.style.background = `#${RESOURCES[id].color.toString(16).padStart(6, '0')}`;
+      chip.append(dot, el('span', 'name', RESOURCES[id].name), el('span', 'amt', '0'));
+      chip.title = RESOURCES[id].desc;
+      this.chips.set(id, chip);
+      res.appendChild(chip);
+    }
+    this.cargoChips = el('span');
+    res.appendChild(this.cargoChips);
+    top.appendChild(res);
+
+    const fuelWrap = el('div');
+    fuelWrap.id = 'fuel-wrap';
+    fuelWrap.appendChild(el('span', undefined, 'FUEL'));
+    const fuelBar = el('div');
+    fuelBar.id = 'fuel-bar';
+    this.fuelFill = el('div');
+    this.fuelFill.id = 'fuel-fill';
+    fuelBar.appendChild(this.fuelFill);
+    fuelWrap.appendChild(fuelBar);
+    this.fuelLabel = el('span', undefined, '');
+    fuelWrap.appendChild(this.fuelLabel);
+    top.appendChild(fuelWrap);
+
+    this.location = el('span');
+    this.location.id = 'location';
+    top.appendChild(this.location);
+
+    const nav = el('div');
+    nav.id = 'nav';
+    const addNav = (key: string, label: string, onClick: () => void): void => {
+      const b = el('button', undefined, label) as HTMLButtonElement;
+      b.addEventListener('click', onClick);
+      this.navButtons.set(key, b);
+      nav.appendChild(b);
+    };
+    addNav('starmap', 'STAR MAP', () => ctx.nav('starmap'));
+    addNav('shipyard', 'SHIPYARD', () => ctx.nav('shipyard'));
+    addNav('site', 'SITE', () => {
+      const def = poiDef(ctx.store.state.currentPoi);
+      ctx.nav(def.special === 'signal' ? 'encounter' : 'surface');
+    });
+    addNav('log', 'LOG', () => this.openLogbook());
+    addNav('reset', '⟲', () => {
+      if (window.confirm('Wipe the save and start over?')) {
+        clearSave();
+        window.location.reload();
+      }
+    });
+    this.navButtons.get('reset')!.classList.add('danger');
+    this.navButtons.get('reset')!.title = 'Reset save';
+    top.appendChild(nav);
+    hud.appendChild(top);
+
+    // side panel container (screens fill it)
+    const panel = el('div');
+    panel.id = 'panel';
+    hud.appendChild(panel);
+
+    // screen hint
+    this.hint = el('div');
+    this.hint.id = 'screen-hint';
+    hud.appendChild(this.hint);
+
+    // GERTY box
+    this.gertyBox = el('div');
+    this.gertyBox.id = 'gerty';
+    this.gertyBox.appendChild(el('div', 'g-name', 'GERTY'));
+    this.gertyText = el('div', 'g-text');
+    this.gertyBox.appendChild(this.gertyText);
+    hud.appendChild(this.gertyBox);
+
+    // toasts + modal
+    toastArea = el('div');
+    toastArea.id = 'toasts';
+    hud.appendChild(toastArea);
+    this.modal = el('div');
+    this.modal.id = 'modal';
+    this.modal.addEventListener('click', (ev) => {
+      if (ev.target === this.modal) this.modal.classList.remove('open');
+    });
+    hud.appendChild(this.modal);
+
+    ctx.bus.on('state:changed', () => this.refresh());
+    ctx.bus.on('screen:change', ({ screen }) => {
+      for (const [key, b] of this.navButtons) b.classList.toggle('active', key === screen || (key === 'site' && (screen === 'surface' || screen === 'encounter')));
+      this.hint.textContent = SCREEN_HINTS[screen];
+      this.refresh();
+    });
+    ctx.bus.on('gerty:line', ({ line }) => this.showGerty(line));
+    ctx.bus.on('fragment:found', () => toast('Discovery logged', 'good'));
+    this.refresh();
+  }
+
+  private refresh(): void {
+    const s = this.ctx.store.state;
+    for (const id of ALL_RESOURCE_IDS) {
+      const chip = this.chips.get(id)!;
+      const amt = Math.floor(s.stock[id] ?? 0);
+      (chip.querySelector('.amt') as HTMLElement).textContent = String(amt);
+      chip.style.display = amt > 0 || RESOURCES[id].kind === 'refined' ? '' : 'none';
+    }
+    // hold contents
+    this.cargoChips.replaceChildren();
+    for (const [id, n] of Object.entries(s.cargo)) {
+      if (n <= 0) continue;
+      const chip = el('span', 'chip raw');
+      const dot = el('span', 'dot');
+      dot.style.background = `#${RESOURCES[id as RawResourceId].color.toString(16).padStart(6, '0')}`;
+      chip.append(dot, el('span', 'name', `hold: ${RESOURCES[id as RawResourceId].name}`), el('span', 'amt', String(Math.floor(n))));
+      this.cargoChips.appendChild(chip);
+    }
+
+    const stats = deriveStats(s.ship);
+    const frac = stats.fuelCap > 0 ? s.fuel / stats.fuelCap : 0;
+    this.fuelFill.style.width = `${Math.round(frac * 100)}%`;
+    this.fuelFill.classList.toggle('low', frac < 0.25);
+    this.fuelLabel.textContent = `${s.fuel.toFixed(0)}/${stats.fuelCap}`;
+
+    const def = poiDef(s.currentPoi);
+    this.location.textContent = `◈ ${def.name.toUpperCase()}`;
+
+    const atHome = s.currentPoi === 'foundry';
+    this.navButtons.get('shipyard')!.disabled = !atHome;
+    this.navButtons.get('shipyard')!.title = atHome ? '' : 'The shipyard is back at the Foundry.';
+    this.navButtons.get('site')!.disabled = atHome;
+    this.navButtons.get('site')!.textContent = atHome ? 'SITE' : `SITE: ${def.name.toUpperCase()}`;
+  }
+
+  private showGerty(line: SpokenLine): void {
+    if (this.gertyTimer) window.clearTimeout(this.gertyTimer);
+    if (this.typeTimer) window.clearInterval(this.typeTimer);
+    this.gertyBox.classList.add('visible');
+    this.gertyBox.classList.toggle('decline', line.mood === 'decline');
+    (this.gertyBox.querySelector('.g-name') as HTMLElement).textContent =
+      line.mood === 'decline' ? 'GERTY — UNABLE TO COMPLY' : line.mood === 'hint' ? 'GERTY — ADVISORY' : 'GERTY';
+    this.gertyText.textContent = '';
+    let i = 0;
+    this.typeTimer = window.setInterval(() => {
+      i += 2;
+      this.gertyText.textContent = line.text.slice(0, i);
+      if (i >= line.text.length && this.typeTimer) window.clearInterval(this.typeTimer);
+    }, 18);
+    this.gertyTimer = window.setTimeout(() => this.gertyBox.classList.remove('visible'), line.duration * 1000);
+  }
+
+  openLogbook(): void {
+    const card = el('div', 'modal-card');
+    card.appendChild(el('h2', undefined, 'Discovery Log'));
+    const entries = [...this.ctx.store.state.log].reverse();
+    if (entries.length === 0) {
+      card.appendChild(el('p', 'sub', 'Nothing yet. The universe hasn’t said anything worth writing down — or you haven’t been listening in the right places.'));
+    }
+    for (const entry of entries) {
+      const div = el('div', 'log-entry');
+      div.appendChild(el('h4', undefined, entry.title));
+      div.appendChild(el('div', 'meta', entry.source));
+      div.appendChild(el('p', undefined, entry.body));
+      if (entry.topicId) {
+        const topic = this.ctx.gerty.topicList().find((t) => t.id === entry.topicId);
+        if (topic) {
+          const ask = el('div', 'ask');
+          const b = el('button', undefined, `Ask GERTY about ${topic.label.toLowerCase()}`) as HTMLButtonElement;
+          b.addEventListener('click', () => {
+            this.modal.classList.remove('open');
+            this.ctx.gerty.ask(topic.id);
+          });
+          ask.appendChild(b);
+          div.appendChild(ask);
+        }
+      }
+      card.appendChild(div);
+    }
+    const close = el('button', undefined, 'Close') as HTMLButtonElement;
+    close.style.marginTop = '12px';
+    close.addEventListener('click', () => this.modal.classList.remove('open'));
+    card.appendChild(close);
+    this.modal.replaceChildren(card);
+    this.modal.classList.add('open');
+  }
+}
