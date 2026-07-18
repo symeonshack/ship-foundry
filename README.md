@@ -21,6 +21,8 @@ npm test         # unit tests (stats, refinery, GERTY, encounter logic)
 - **GERTY** flags hazards beyond your equipment ratings and occasionally declines to answer. The logbook (LOG) collects discoveries; some entries can be raised with GERTY directly.
 - Far out, something is building. It doesn't speak. Bring parts.
 
+**Dev mode:** type `c` `h` `t` quickly (within ~1.2s) to toggle. Bottomless stock and tank, every site pre-surveyed — for exploring/debugging. A pulsing DEV badge marks it; toggling off restores an honest tank but granted stock remains, so use a throwaway save or a checkpoint.
+
 Progress autosaves to `localStorage`. The ⟲ button opens Saves & Checkpoints — checkpoints are captured automatically (wake-up, each departure from the Foundry, each docking, major discoveries) and any of them can be restored if a run goes sideways; full wipe lives at the bottom of the same panel.
 
 ## V1 constraints
