@@ -18,7 +18,7 @@ import { poiDef, type PoiDef } from '../exploration/starSystem';
 import { deriveStats, travelCost, type ShipStats } from '../building/shipStats';
 import { distanceBetween } from '../exploration/starSystem';
 import { PARTS, type RigType } from '../building/partCatalog';
-import { availableRigs, degradeRate, rigCanMine, EXTRACT_RATE, type ActiveRig } from './rigs';
+import { availableRigs, degradeRate, rigCanMine, tickExtraction, type ActiveRig } from './rigs';
 import { canEmergencyReturn, emergencyReturn } from './hauling';
 import { RESOURCES, type RawResourceId } from '../core/resources';
 import { FLAGS } from '../core/flags';
@@ -263,7 +263,7 @@ export class SurfaceScreen implements GameScreen {
   }
 
   private deployRig(type: RigType, node: NodeState): void {
-    const rig: ActiveRig = { id: this.ctx.store.uid('r'), type, nodeId: node.id, integrity: 100, paused: false };
+    const rig: ActiveRig = { id: this.ctx.store.uid('r'), type, nodeId: node.id, integrity: 100, paused: false, buffer: 0 };
     this.rigs.push(rig);
     const mesh = buildRigDeployed(type);
     mesh.position.set(node.x + 1.6, this.terrain!.heightAt(node.x + 1.6, node.z), node.z);
@@ -323,19 +323,24 @@ export class SurfaceScreen implements GameScreen {
       const node = nodes.find((n) => n.id === rig.nodeId);
       if (!node) continue;
 
-      // extraction into the hold (paused rigs sit idle on the deposit)
-      const want = rig.paused ? 0 : Math.min(EXTRACT_RATE[rig.type] * dt, node.remaining);
-      const added = want > 0 ? store.addCargo(node.resource, want, this.stats.cargoCap) : 0;
-      if (added > 0) {
-        node.remaining -= added;
-        this.cargoFullSaid = false;
-        if (!store.hasFlag(FLAGS.FIRST_MINE)) {
-          store.setFlag(FLAGS.FIRST_MINE);
-          store.bus.emit('mine:extracted', { resource: node.resource, amount: added });
+      // extraction into the hold, one whole unit at a time (paused rigs idle)
+      const unit = tickExtraction(rig, node, dt);
+      if (unit > 0) {
+        const added = store.addCargo(node.resource, 1, this.stats.cargoCap);
+        if (added > 0) {
+          node.remaining -= 1;
+          this.cargoFullSaid = false;
+          if (!store.hasFlag(FLAGS.FIRST_MINE)) {
+            store.setFlag(FLAGS.FIRST_MINE);
+            store.bus.emit('mine:extracted', { resource: node.resource, amount: 1 });
+          }
+        } else {
+          rig.buffer += 1; // hold it in the hopper until there's room
+          if (!this.cargoFullSaid) {
+            this.cargoFullSaid = true;
+            store.bus.emit('cargo:full', {});
+          }
         }
-      } else if (want > 0 && !this.cargoFullSaid) {
-        this.cargoFullSaid = true;
-        store.bus.emit('cargo:full', {});
       }
 
       if (node.remaining <= 0) {
@@ -451,7 +456,7 @@ export class SurfaceScreen implements GameScreen {
     this.panelUpdaters.push(() => {
       const total = store.cargoTotal();
       (holdBar.firstElementChild as HTMLElement).style.width = `${Math.round((total / Math.max(1, this.stats.cargoCap)) * 100)}%`;
-      holdLabel.textContent = `${total.toFixed(1)} / ${this.stats.cargoCap}`;
+      holdLabel.textContent = `${Math.round(total)} / ${this.stats.cargoCap}`;
     });
     for (const [res, amount] of Object.entries(store.state.cargo)) {
       if (amount <= 0) continue;
@@ -460,9 +465,9 @@ export class SurfaceScreen implements GameScreen {
       const name = el('span', 'grow', RESOURCES[id].name);
       name.style.fontSize = '12px';
       row.appendChild(name);
-      const amt = el('span', undefined, amount.toFixed(1));
+      const amt = el('span', undefined, String(Math.round(amount)));
       this.panelUpdaters.push(() => {
-        amt.textContent = (store.state.cargo[id] ?? 0).toFixed(1);
+        amt.textContent = String(Math.round(store.state.cargo[id] ?? 0));
       });
       row.appendChild(amt);
       const dumpOne = button('▼1', () => {
@@ -472,7 +477,7 @@ export class SurfaceScreen implements GameScreen {
       row.appendChild(dumpOne);
       const dumpAll = button('▼ all', () => {
         const n = store.dumpCargo(id, Infinity);
-        if (n > 0) toast(`Jettisoned ${n.toFixed(1)} ${RESOURCES[id].name.toLowerCase()}`, 'warn');
+        if (n > 0) toast(`Jettisoned ${Math.round(n)} ${RESOURCES[id].name.toLowerCase()}`, 'warn');
       });
       dumpAll.title = 'Jettison everything of this';
       row.appendChild(dumpAll);

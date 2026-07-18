@@ -1,4 +1,5 @@
 import { EventBus, type ScreenId } from './core/events';
+import { RAW_IDS } from './core/resources';
 import { GameStore, createNewGame } from './core/state';
 import { FLAGS } from './core/flags';
 import { loadGame, pushCheckpoint, saveGame } from './save/persistence';
@@ -81,6 +82,24 @@ const FUEL_RESERVE_MIGRATION = 'migration.fuelReserve';
 if (!store.hasFlag(FUEL_RESERVE_MIGRATION)) {
   if (!isNewGame) store.addStock('fuel', 8);
   store.setFlag(FUEL_RESERVE_MIGRATION);
+}
+
+// saves from the fractional-extraction era: round raw material to the whole
+// units the player actually watched come out of the ground
+const INTEGER_CARGO_MIGRATION = 'migration.integerCargo';
+if (!store.hasFlag(INTEGER_CARGO_MIGRATION)) {
+  if (!isNewGame) {
+    for (const id of RAW_IDS) {
+      store.state.stock[id] = Math.round(store.state.stock[id] ?? 0);
+      const held = store.state.cargo[id];
+      if (held !== undefined) {
+        const rounded = Math.round(held);
+        if (rounded <= 0) delete store.state.cargo[id];
+        else store.state.cargo[id] = rounded;
+      }
+    }
+  }
+  store.setFlag(INTEGER_CARGO_MIGRATION);
 }
 
 // dev-only handle for driving the game in automated verification
