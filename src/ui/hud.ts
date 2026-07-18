@@ -2,7 +2,7 @@ import type { Ctx } from '../core/ctx';
 import { ALL_RESOURCE_IDS, RESOURCES, type RawResourceId } from '../core/resources';
 import { deriveStats } from '../building/shipStats';
 import { poiDef } from '../exploration/starSystem';
-import { clearSave } from '../save/persistence';
+import { listCheckpoints, restoreCheckpoint, wipeAll } from '../save/persistence';
 import { el } from './panels';
 import type { SpokenLine } from '../companion/gerty';
 import type { ScreenId } from '../core/events';
@@ -90,14 +90,9 @@ export class Hud {
       ctx.nav(def.special === 'signal' ? 'encounter' : 'surface');
     });
     addNav('log', 'LOG', () => this.openLogbook());
-    addNav('reset', '⟲', () => {
-      if (window.confirm('Wipe the save and start over?')) {
-        clearSave();
-        window.location.reload();
-      }
-    });
+    addNav('reset', '⟲', () => this.openSaves());
     this.navButtons.get('reset')!.classList.add('danger');
-    this.navButtons.get('reset')!.title = 'Reset save';
+    this.navButtons.get('reset')!.title = 'Saves & checkpoints';
     top.appendChild(nav);
     hud.appendChild(top);
 
@@ -191,6 +186,48 @@ export class Hud {
       if (i >= line.text.length && this.typeTimer) window.clearInterval(this.typeTimer);
     }, 18);
     this.gertyTimer = window.setTimeout(() => this.gertyBox.classList.remove('visible'), line.duration * 1000);
+  }
+
+  openSaves(): void {
+    const card = el('div', 'modal-card');
+    card.appendChild(el('h2', undefined, 'Saves & Checkpoints'));
+    card.appendChild(
+      el(
+        'p',
+        'sub',
+        'Checkpoints are captured automatically: at wake-up, before every departure from the Foundry, on docking, and at major discoveries. Restoring first snapshots your current progress as “Before rollback”, so you can always change your mind.',
+      ),
+    );
+    const cps = listCheckpoints();
+    if (cps.length === 0) {
+      card.appendChild(el('p', 'sub', 'No checkpoints yet.'));
+    }
+    for (const cp of cps) {
+      const row = el('div', 'log-entry');
+      row.appendChild(el('h4', undefined, cp.label));
+      const mins = Math.floor(cp.playSeconds / 60);
+      row.appendChild(el('div', 'meta', `${new Date(cp.at).toLocaleString()} · ${mins}m played · at ${cp.state.currentPoi}`));
+      const restore = el('button', undefined, 'Restore') as HTMLButtonElement;
+      restore.addEventListener('click', () => {
+        restoreCheckpoint(cp, this.ctx.store.state);
+      });
+      row.appendChild(restore);
+      card.appendChild(row);
+    }
+    const wipe = el('button', 'danger', 'Wipe save & checkpoints — start over') as HTMLButtonElement;
+    wipe.style.marginTop = '14px';
+    wipe.addEventListener('click', () => {
+      if (window.confirm('Erase everything — save and all checkpoints — and start from the wake-up?')) {
+        wipeAll();
+      }
+    });
+    card.appendChild(wipe);
+    const close = el('button', undefined, 'Close') as HTMLButtonElement;
+    close.style.cssText = 'margin-top:14px;margin-left:8px';
+    close.addEventListener('click', () => this.modal.classList.remove('open'));
+    card.appendChild(close);
+    this.modal.replaceChildren(card);
+    this.modal.classList.add('open');
   }
 
   openLogbook(): void {

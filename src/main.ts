@@ -1,7 +1,7 @@
 import { EventBus, type ScreenId } from './core/events';
 import { GameStore, createNewGame } from './core/state';
 import { FLAGS } from './core/flags';
-import { loadGame, saveGame } from './save/persistence';
+import { loadGame, pushCheckpoint, saveGame } from './save/persistence';
 import { ScreenManager } from './scene/renderer';
 import { Gerty } from './companion/gerty';
 import { LINES, TOPICS } from './companion/script';
@@ -62,6 +62,15 @@ for (const event of ['travel:arrive', 'build:placed', 'refine:complete', 'encoun
 }
 window.addEventListener('beforeunload', () => saveGame(store.state));
 
+// rollback checkpoints at the moments worth retrying from
+bus.on('travel:depart', ({ from }) => {
+  if (from === 'foundry') pushCheckpoint(store.state, 'Before departure');
+});
+bus.on('travel:arrive', ({ poiId }) => {
+  if (poiId === 'foundry') pushCheckpoint(store.state, 'Docked at the Foundry');
+});
+bus.on('encounter:solved', () => pushCheckpoint(store.state, 'The Relay — structure active', true));
+
 // resume where the save left off
 const here = poiDef(store.state.currentPoi);
 const initial: ScreenId =
@@ -82,4 +91,5 @@ if (isNewGame && !store.hasFlag(FLAGS.INTRO_DONE)) {
   gerty.speakById('intro-2');
   gerty.speakById('intro-3');
   saveGame(store.state);
+  pushCheckpoint(store.state, 'Wake — day one', true);
 }

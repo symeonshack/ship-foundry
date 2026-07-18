@@ -203,9 +203,10 @@ export class StarMapScreen implements GameScreen {
       return;
     }
     warnBeforeTravel(store, id, this.stats);
+    // emitted before the burn so departure listeners (checkpoints) see the pre-trip state
+    store.bus.emit('travel:depart', { from, to: id });
     store.state.fuel -= cost;
     store.state.currentPoi = id;
-    store.bus.emit('travel:depart', { from, to: id });
     const def = poiDef(id);
     if (id === 'foundry') {
       arriveHome(store);
