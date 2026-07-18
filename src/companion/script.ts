@@ -33,6 +33,10 @@ export const LINES: LineDef[] = [
   { id: 'fuel-low', trigger: 'fuel-low', maxTimes: 99, cooldownSec: 90, mood: 'hint', text: 'Fuel margin is thin. I recommend heading home while “recommend” is still the right word.' },
   { id: 'stranded', trigger: 'stranded', maxTimes: 99, cooldownSec: 60, mood: 'hint', text: 'We do not have the fuel to get home. Options: emergency burn — which means jettisoning the hold — or you make fuel appear. I’ll wait.' },
 
+  // ---- flight ----
+  { id: 'first-flight', trigger: 'flight', priority: 2, mood: 'hint', text: 'You have the stick. Drift is your own cargo arrangement talking back — counter it, and mind the throttle. I’ll handle everything except the flying.' },
+  { id: 'hard-landing-1', trigger: 'hard-landing', maxTimes: 99, cooldownSec: 30, text: 'Logged as a “firm arrival.” The landing gear disagrees with my phrasing. Hold the retro-burn earlier next time.' },
+
   // ---- meta ----
   { id: 'dev-mode', trigger: 'dev-mode', maxTimes: 99, cooldownSec: 10, text: 'Developer override accepted. Stock replenished, tank sealed full, survey archives unlocked. I saw nothing, and I will be logging that I saw nothing.' },
 

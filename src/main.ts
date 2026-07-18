@@ -14,6 +14,7 @@ import { StarMapScreen } from './exploration/starMap';
 import { SurfaceScreen } from './mining/surfaceScene';
 import { EncounterScreen } from './encounter/encounterScene';
 import { InteriorScreen } from './interior/interiorScene';
+import { FlightScreen } from './flight/flightScene';
 import { Hud } from './ui/hud';
 import type { Ctx } from './core/ctx';
 
@@ -52,11 +53,15 @@ manager = new ScreenManager(canvas, bus, (dt) => {
   }
 });
 
+const flightScreen = new FlightScreen(ctx);
+const starMapScreen = new StarMapScreen(ctx, canvas);
+starMapScreen.flightRef = flightScreen;
 manager.register(new InteriorScreen(ctx, canvas));
 manager.register(new ShipyardScreen(ctx, canvas));
-manager.register(new StarMapScreen(ctx, canvas));
+manager.register(starMapScreen);
 manager.register(new SurfaceScreen(ctx, canvas));
 manager.register(new EncounterScreen(ctx, canvas));
+manager.register(flightScreen);
 
 new Hud(ctx);
 

@@ -19,6 +19,7 @@ export function toast(text: string, kind: 'info' | 'warn' | 'bad' | 'good' = 'in
 
 const SCREEN_HINTS: Record<ScreenId, string> = {
   interior: 'SHIP — WASD to move, mouse to look (click the view to capture the cursor; arrows also look), E to interact. The map lives on the table; GERTY lives on the wall.',
+  flight: 'TRANSIT — A/D steer against drift, W/S throttle. On descent: HOLD SPACE to retro-burn before the ground arrives.',
   shipyard: 'SHIPYARD — pick a part, click a glowing socket to fit it. Click a fitted part to inspect or remove it. Watch the engines: glow means strain.',
   starmap: 'STAR MAP — click a contact to survey it. The outer ring is your point of no return; the inner ring gets you home again.',
   surface: 'SURFACE OPS — arm a rig, click a deposit to deploy. Hazards tick while you stay. The clock only matters down here.',
@@ -183,10 +184,11 @@ export class Hud {
     this.devBadge.style.display = this.ctx.store.hasFlag(FLAGS.DEV_MODE) ? '' : 'none';
 
     const atHome = s.currentPoi === 'foundry';
-    this.navButtons.get('ship')!.disabled = this.activeScreen === 'interior';
-    this.navButtons.get('shipyard')!.disabled = !atHome;
+    const inFlight = this.activeScreen === 'flight';
+    this.navButtons.get('ship')!.disabled = this.activeScreen === 'interior' || inFlight;
+    this.navButtons.get('shipyard')!.disabled = !atHome || inFlight;
     this.navButtons.get('shipyard')!.title = atHome ? '' : 'The shipyard is back at the Foundry.';
-    this.navButtons.get('site')!.disabled = atHome;
+    this.navButtons.get('site')!.disabled = atHome || inFlight;
     this.navButtons.get('site')!.textContent = atHome ? 'SITE' : `SITE: ${def.name.toUpperCase()}`;
   }
 

@@ -5,8 +5,8 @@ import { makeCamera, makeOrbit } from '../scene/camera';
 import { addBasicLights, addStars, buildFoundryBase, buildPartMesh, buildSocketMarker, mat } from '../scene/primitives';
 import { PARTS, SHIP_PART_IDS, type PartId } from './partCatalog';
 import { deriveStats, type ShipStats } from './shipStats';
+import { applyStrainGlow, buildShipAssembly, type ShipAssembly } from './shipMesh';
 import { costToString } from '../core/resources';
-import type { PartPlacement } from '../core/state';
 import { FLAGS } from '../core/flags';
 import { box, button, clearPanel, el, renderRefineryPanel, type LivePanel } from '../ui/panels';
 import { toast } from '../ui/hud';
@@ -20,6 +20,7 @@ export class ShipyardScreen implements GameScreen {
   private raycaster = new THREE.Raycaster();
 
   private shipGroup = new THREE.Group();
+  private assembly: ShipAssembly | null = null;
   private placementGroups = new Map<string, THREE.Group>();
   private markers: THREE.Mesh[] = [];
   private ghost: THREE.Group | null = null;
@@ -76,57 +77,21 @@ export class ShipyardScreen implements GameScreen {
   // ---- ship assembly ----
 
   private rebuildShip(): void {
-    this.shipGroup.traverse((o) => {
-      const m = o as THREE.Mesh;
-      if (m.geometry) m.geometry.dispose();
-      if (m.material) (Array.isArray(m.material) ? m.material : [m.material]).forEach((x) => x.dispose());
-    });
+    this.assembly?.dispose();
     this.shipGroup.clear();
-    this.placementGroups.clear();
     this.markers = [];
     this.ghost = null;
 
     const ship = this.ctx.store.state.ship;
-    const byUid = new Map(ship.map((p) => [p.uid, p]));
-    const build = (p: PartPlacement): THREE.Group => {
-      let g = this.placementGroups.get(p.uid);
-      if (g) return g;
-      g = new THREE.Group();
-      g.add(buildPartMesh(p.partId));
-      g.userData.uid = p.uid;
-      if (p.parent === null) {
-        // hoisted above the pad so the downward-facing mount sockets stay visible
-        g.position.set(0, 1.7, 0);
-        this.shipGroup.add(g);
-      } else {
-        const parentPlacement = byUid.get(p.parent)!;
-        const parentGroup = build(parentPlacement);
-        const socket = PARTS[parentPlacement.partId].sockets[p.socket]!;
-        g.position.set(...socket.pos);
-        g.rotation.set(...socket.rot);
-        parentGroup.add(g);
-      }
-      this.placementGroups.set(p.uid, g);
-      return g;
-    };
-    for (const p of ship) build(p);
+    this.assembly = buildShipAssembly(ship);
+    // hoisted above the pad so the downward-facing mount sockets stay visible
+    this.assembly.group.position.set(0, 1.7, 0);
+    this.shipGroup.add(this.assembly.group);
+    this.placementGroups = this.assembly.byUid;
 
     this.stats = deriveStats(ship);
-    this.applyStrainGlow();
+    applyStrainGlow(this.shipGroup, this.stats);
     this.rebuildMarkers();
-  }
-
-  private applyStrainGlow(): void {
-    const { strain } = this.stats;
-    const color = strain === 'critical' ? 0xff5c5c : 0xffb454;
-    const intensity = strain === 'ok' ? 0.15 : strain === 'high' ? 0.8 : 1.4;
-    this.shipGroup.traverse((o) => {
-      if (o.name === 'glow') {
-        const m = (o as THREE.Mesh).material as THREE.MeshStandardMaterial;
-        m.emissive.setHex(color);
-        m.emissiveIntensity = intensity;
-      }
-    });
   }
 
   private socketOccupied(parentUid: string, socketIndex: number): boolean {

@@ -34,6 +34,12 @@ A known-good driver exists in past session scratchpads (`drive.mjs`); recreate f
 - Aboard, GERTY speaks via `#gerty-bubble` (`.decline` class for refusals); the `#gerty` comms box only appears off-ship. GERTY queues lines with a busy window (long lines block ~12s) — `gerty.ask(topic)` jumps the queue.
 - Nav: no STAR MAP button; map opens only from the table console. Travel always lands on `interior`; the hatch exits by context.
 
+## Flight (Phase 2)
+
+- Travel opens the `flight` screen; state (fuel, currentPoi) commits at launch, `travel:arrive` fires only at touchdown. Drive with real keys: W/S throttle, A/D steer, hold Space to brake on descent. Starter ships need braking from the start of descent to land soft.
+- Screen internals via `manager.screens.get('flight')`: `.phase` ('cruise'|'descent'|'touchdown'), `.journey.progress`, `.descent.{altitude,velocity}`, `.hardLanding`. Dev mode adds an "Autopilot (dev)" panel button that lands instantly.
+- Reload mid-flight boots already-arrived aboard (by design; that hop's arrive-triggered GERTY line/fragment is skipped).
+
 ## Gotchas
 
 - GERTY lines queue with cooldowns; ambient lines can lag their trigger by several seconds — assert on state/log, not on which line is currently showing.

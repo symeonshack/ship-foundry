@@ -33,6 +33,8 @@ export class StarMapScreen implements GameScreen {
   private stats: ShipStats;
   private t = 0;
   private unsub: (() => void)[] = [];
+  /** wired in main; travel hands the journey to the flight screen */
+  flightRef: { begin(from: string, to: string, cost: number): void } | null = null;
 
   constructor(private ctx: Ctx, canvas: HTMLCanvasElement) {
     this.scene.background = new THREE.Color(0x06090d);
@@ -212,11 +214,17 @@ export class StarMapScreen implements GameScreen {
     } else {
       store.poi(id).visited = true;
     }
-    store.bus.emit('travel:arrive', { poiId: id });
-    checkFuelState(store, this.stats);
     store.changed();
-    // travel always ends aboard — the hatch leads out
-    this.ctx.nav('interior');
+    // travel is flown, not teleported: the flight screen finishes the arrival
+    // (emits travel:arrive, checks fuel state, lands you aboard)
+    if (this.flightRef) {
+      this.flightRef.begin(from, id, cost);
+      this.ctx.nav('flight');
+    } else {
+      store.bus.emit('travel:arrive', { poiId: id });
+      checkFuelState(store, this.stats);
+      this.ctx.nav('interior');
+    }
   }
 
   private renderPanel(): void {
