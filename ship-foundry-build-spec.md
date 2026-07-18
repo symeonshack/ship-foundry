@@ -8,6 +8,7 @@ A non-combat sci-fi exploration and building game. You scan, mine, refine, and b
 - **Engineering feel without the math.** Building choices give visual, intuitive feedback (heat glow, stability wobble, a fuel-range line on the map) instead of stat sheets.
 - **Discovery-driven.** The world is understood by exploring it, not by reading tutorials.
 - **Tone:** an indifferent universe, not a villainous one. Problems are physics and scarcity, solved by hypothesis → test → observe → iterate.
+- **First-person areas (ship, surfaces, structures): *Alien: Isolation*-inspired, minus the horror.** Dense, atmospheric environmental exploration; problem-solving built from finding objects, logs, clues, and tools; tactile, varied environmental interaction — without a hunting predator, jump scares, or any system built around being stalked to be killed.
 
 ## Modes
 
@@ -38,26 +39,40 @@ Massive persistent universe across many solar systems and servers, discovering o
 - Modular parts: engines, hulls, life support, cargo, mining rigs, refinery modules, sensor arrays, heat/radiation shielding.
 - Snap-together assembly — visual and direct, not menu-driven stat editing.
 - Feedback is diegetic: parts glow when under strain, a wind-tunnel test view shows instability, fuel range is a literal line on the star map that changes live as you build.
+- **Walkable ship interior.** The ship is not just an external inspect-model — the player can walk around inside it. GERTY has a physical presence here (a console, embedded screen, or drone) rather than existing only as a floating chat box. A diegetic star map console/table lives inside the ship too — walking up to it opens the map, rather than it being a permanent top-of-screen UI element.
 
 ### 2. Exploration & Scanning
 - A star system with discrete points of interest (planets, moons, asteroids).
 - Scanning reveals what's there before you risk equipment getting it.
 - Hazards drive difficulty: radiation, extreme temperature, gravity anomalies, storms, unstable terrain, fuel/time pressure. Never enemies.
+- **Real travel, not instant teleport.** Selecting a destination doesn't pop the player there directly — they actually fly the ship: third-person while underway, or first-person from a seated cockpit view. This makes build choices (thrust, stability, fuel range) visible in play rather than abstracted away.
+- **Landing sequences.** Arriving at a planet/asteroid involves an actual landing (full ship or a separate lander craft) rather than instant arrival — heat shielding and stability under real entry conditions become something the player watches happen, not a hidden stat check.
 
 ### 3. Mining & Resources
 - Deployable rigs matched to site hazard profiles.
 - Cargo/fuel-limited hauling creates logistics decisions.
 - Raw → refined → buildable, in the Minecraft/Age-of-Empires sense but grounded in plausible materials (ices, regolith, alloys, exotic gases).
+- **Hybrid surface exploration — two perspectives on one live site, not two separate modes.** A top-down "set it and monitor" view (Age of Empires-style) lets the player direct rigs/drones, assign haul routes, and watch extraction happen at a glance. At any point, the player can drop directly into that same live site in first/third-person to walk around, inspect things closely, or handle something a rig can't. Switching is a camera/control swap over the same persistent scene and simulation state — not a level reload or a separate mode. (Closest real-world precedent: *Battlezone* (1998/2016), which lets players command units from an overhead view and also drive a vehicle first-person on the same live battlefield.) This is a genuine scope increase over either pure version — both control schemes operate against the same underlying world state — but it maps well onto real engineering instinct: survey the big picture, then get hands-on with the specific problem.
 
 ### 4. Companion AI (GERTY-style)
 - Present from minute one; dry, understated, genuinely helpful (flags hazards beyond current equipment ratings, offers hints, narrates discoveries).
 - Dialogue system should support an explicit "declines to answer" state, wired to future narrative content without requiring engine changes later.
 
-### 5. Non-Combat Alien Collaborator Encounter (v1)
-- At least one AI-controlled "collaborator" — another creature surviving its own version of the same problem.
-- No shared language, no dialogue trees. Communication happens by building: player and collaborator alternate modifying a shared structure/rig until something works for both.
+### 5. Agent Personality Spectrum
+- The "child" AI agents encountered in structures/sites aren't uniform. Each has its own personality, ranging from collaborative (wants to build together, per the original v1 collaborator encounter) through obstructive to nearly hostile — never lethal, never combat, but capable of real aggression.
+- Personality stems from the agent's own original directive — the same "rigid logic → behavior" theme as GERTY and the parent rogue AI, expressed at a small, legible scale. An agent's behavior should make sense once its original function is understood (a security/quarantine agent behaves very differently than a maintenance agent).
+- The existing scan mechanic doubles as a way to gauge an agent's disposition before engaging — observation and environmental clues (logs, the agent's physical design, its location/role in a structure) telegraph personality rather than the game stating it outright.
+- **Hostile-leaning agents show aggression through obstruction, never combat:** sealing doors, venting hazards, cutting power, sabotaging equipment, sounding alarms, chasing to force a retreat. No weapons, no lethal outcomes for the player, ever.
+- **Resolution is always outsmarting, never fighting:** exploit an agent's own literal-mindedness (satisfy the letter of its rule to get past it), reroute a system to override it, use a found tool, or simply evade it. "Losing" to a hostile agent means a non-lethal setback — forced retreat, temporary lockout, lost time or resources — never player death.
 
-### 6. Discovery Log
+### 6. Environmental Interaction & Problem-Solving (*Alien: Isolation*-inspired)
+- First-person areas (ship interior, planet/asteroid surfaces, structures found on surfaces) emphasize tactile environmental interaction: consoles, keypads, physical panels, manual overrides.
+- Tools and found objects are usable in context — a cutting tool opens a sealed door, a bypass device gets past a locked panel, a portable scanner boost reveals more — sourced through exploration rather than a fixed inventory menu.
+- Simple crafting/combination of found components ties into the existing resource system where sensible, rather than being a separate currency.
+- Logs, audio fragments, and physical clues (the Discovery Log system below) are found through this same environmental exploration, reinforcing the "learn the world by exploring it" pillar.
+- Explicitly excluded: a hunting/stalking enemy, jump scares, or any system built around evading a predator whose goal is to kill the player. Tension comes from problem-solving, resource scarcity, and legible-but-unpredictable agent behavior (see Agent Personality Spectrum above) — not horror.
+
+### 7. Discovery Log
 - Auto-populated logbook: found fragments, companion remarks, physical evidence — written in-voice, not as a dry collectibles list.
 - Content is placeholder-driven in v1 (see below); system just needs to support inserting keyed fragments at triggers/locations.
 
@@ -74,7 +89,31 @@ Massive persistent universe across many solar systems and servers, discovering o
 - **GERTY's relationship to the rogue AI.** Two options on the table: (a) GERTY is unrelated, simply a companion limited by the authority's orders; (b) GERTY shares deep architectural lineage with the rogue AI — same root origin, different branch, one bounded/tame and one that got an unbounded directive and vanished. Option (b) is the stronger emotional engine (turns the theme personal for the one companion the player has) but isn't confirmed yet.
 - **The collaborator beings' true nature.** Leaning toward autonomous AI agents/sub-processes spun off from the rogue AI's own infrastructure (neutral, can't be conventionally communicated with due to technical/design limitations rather than secrecy, cooperate through building when engaged) rather than biological alien life — not fully locked in.
 
-Build all narrative-touching systems (logbook, companion dialogue states, agent-encounter framework, ending hooks) generically enough that either open item above can resolve either way without requiring rework.
+## Phase 2 (Future): LLM-Driven Companion & Agent Brains
+
+Not part of v1. Layered on top of the working scripted/state-machine baseline as an optional enhancement, not a replacement — the scripted v1 behavior becomes the permanent fallback path (see Cost Model below), so this feature can never leave the game in a broken state.
+
+**Architecture requirement:** this game is currently a static Vite site. A real LLM API call can't be made safely from client-side code (it would expose the API key). Phase 2 requires a small backend — a lightweight Node/Express server or a serverless function (Vercel/Netlify/Cloudflare Workers) — that proxies requests and holds the API key server-side. This is a genuine scope addition, not a small tweak.
+
+**GERTY (conversational):**
+- Backed by a system prompt encoding GERTY's personality, what it actually knows, and what it's currently instructed not to reveal (tied to campaign story-flag state).
+- Generates dialogue/hints live from real game state instead of a hand-authored branching tree.
+- Falls back to the v1 scripted dialogue system whenever the API is unavailable, rate-limited, or a session has exhausted its usage allowance (see below) — the fallback is not a degraded experience, it's simply the complete v1 baseline.
+
+**Child/collaborator bots (non-verbal by design):**
+- LLM is used as the *reasoning engine behind build behavior*, not as a voice — consistent with their established lore as non-communicating agents.
+- Given the current shared structure and the player's last build action, the model decides how the agent modifies/extends it, producing emergent "communication through building" instead of a fixed set of authored puzzle responses.
+
+**Cost Model**
+
+- Real LLM calls cost per token (input + output). Use a fast/cheap model tier for routine interactions, and keep responses short (capped output tokens) to control per-call cost.
+- Trigger calls only at meaningful moments (a new discovery, a build attempt, a significant dialogue beat) — not continuously or per-frame.
+- For personal/small-scale use (just the developer and friends), actual costs are likely trivial — probably not worth building any metering infrastructure at all initially.
+- If the game is ever shared more broadly, cost scales with (number of players × interactions), so metering becomes worth building:
+  - **Session/account-based usage allowance**, tracked server-side (client-side counts can be spoofed) — e.g., a capped number of real-AI interactions per hour or day, replenishing over time (token-bucket style), the same pattern Claude.ai's own free tier uses.
+  - When a session's allowance is exhausted, gracefully fall back to the v1 scripted baseline rather than showing an error — optionally frame the cooldown in-fiction (e.g., GERTY "reallocating compute" for a stretch), turning a technical constraint into a small narrative beat instead of breaking immersion.
+  - A hard spending cap at the API-account level is worth setting as a safety net regardless of per-session limits.
+  - A "bring your own API key" option is worth considering if ever shared publicly at real scale — it removes the cost liability from the developer entirely, at the cost of a bit of setup friction for the player.
 
 ## V1 Scope (MVP)
 
@@ -82,11 +121,51 @@ Build all narrative-touching systems (logbook, companion dialogue states, agent-
 - ~12–15 buildable parts across ship and base.
 - 2–3 environmental hazard types.
 - Fully working scan → mine → refine → build loop, built entirely on procedural/primitive geometry (see Assets).
-- Companion AI with placeholder narrative hooks (generic "won't answer that yet" states).
-- One alien-collaborator encounter.
+- Companion AI with placeholder narrative hooks (generic "won't answer that yet" states), with a physical in-ship presence rather than a floating chat box.
+- Walkable ship interior with a diegetic star-map console (replacing the top-of-screen map UI).
+- Real ship travel (third-person flight or seated first-person piloting) and a landing sequence, replacing instant teleport-to-destination.
+- Hybrid top-down/on-foot surface exploration on at least one site, demonstrating the camera/control-swap mechanic over shared world state.
+- At least one collaborative-leaning and one hostile-but-nonlethal agent, demonstrating the personality spectrum, plus basic tool-based environmental interaction in at least one structure.
 - Single-player only.
 
+## Next Iteration — Implementation Sequence
+
+This section is written to be handed to Fable directly as the build prompt, one phase at a time. Complete and test each phase before starting the next — this is additive work on the existing v1 project (ship foundry, scan/mine/refine/build loop, GERTY dialogue system), not a rebuild. Procedural/primitive geometry only (see Assets) and no combat systems apply to every phase below.
+
+### Phase 1: Walkable Ship Interior + GERTY Presence + Diegetic Map
+
+- Add a first/third-person character controller for walking around inside the ship.
+- Build a single fixed baseline interior layout for the ship (a "core" interior room/corridor), independent of whichever exterior parts are currently attached — don't attempt to procedurally regenerate the interior to match every possible build configuration; that's out of scope for this phase. Ship customization stays external/functional (thrust, stability, etc.) for now.
+- Give GERTY a physical presence inside the ship — a console, embedded screen, or drone object the player can walk up to and interact with — replacing the current bottom-left chat box.
+- Add a physical star-map console/table inside the ship. Walking up to it and interacting opens the star map UI, reusing the existing star map data/functionality — just relocating how it's triggered.
+- **Acceptance check:** player can walk around inside the ship in first or third person, see and interact with GERTY as a physical object in the world, and open the star map by walking up to its console rather than via a permanent top-of-screen control.
+
+### Phase 2: Real Ship Travel + Landing
+
+- Replace instant teleport-on-destination-select with actual flight: third-person exterior view or first-person seated cockpit view, using the ship's existing stats (thrust, fuel, stability) to drive movement and handling.
+- Add a landing sequence on arrival at a planet/asteroid (full ship, or a separate lander if simpler to implement first) — tie heat/stability feedback during entry to the existing hazard system.
+- **Acceptance check:** selecting a destination triggers a flight sequence the player controls or watches, ending in an explicit landing, rather than instant arrival.
+
+### Phase 3: Hybrid Top-Down/On-Foot Surface Exploration
+
+- On arrival at a site, support two camera/control modes over the same live scene: a top-down command mode (assign rigs/drones, monitor extraction, Age of Empires-style) and a first/third-person on-foot mode (walk around, inspect, interact directly) — see Mining & Resources above for the full description.
+- Implement mode switching as a camera/control swap over shared world state — not a scene reload or separate level.
+- Reuse the character controller built in Phase 1.
+- **Acceptance check:** player can freely switch between commanding rigs from the top-down view and walking around the same site in person, with consistent, shared world state in both modes.
+
+### Phase 4: Alien-Isolation-Inspired First-Person Systems + Agent Personality Spectrum
+
+- Build out tactile environmental interaction in first-person areas (ship interior, surface structures): usable consoles/panels, found tools that unlock specific interactions (e.g., a cutting tool opens a sealed door), and simple crafting/combination of found components.
+- Extend the existing single collaborator agent into the full personality spectrum: implement at least one collaborative-leaning agent and one obstructive/hostile-leaning agent, each with behavior driven by its own in-fiction directive.
+- Hostile-leaning agent behavior is limited to non-lethal obstruction (sealing doors, cutting power, venting hazards, sounding alarms, forcing retreat) — no weapons, no combat, no player death from an agent encounter, ever.
+- Let the player gauge an agent's disposition via the existing scan mechanic plus environmental clues (logs, agent design/location) before engaging.
+- Build at least one "outsmart, don't fight" resolution for the hostile-leaning agent (exploiting its literal directive, rerouting a system, using a found tool, or evasion).
+- **Acceptance check:** player can explore a structure using found tools/logs to solve an environmental problem, and separately encounter both a collaborative agent and a hostile-but-nonlethal agent whose behavior can be understood and outsmarted — with no combat system existing anywhere in the game.
+
+**How to use this section:** paste one phase's instructions (plus this section's opening paragraph for context) into Claude Code/Fable as its own prompt. Confirm the acceptance check passes before moving to the next phase's prompt.
+
 ## Out of Scope (v1)
+
 
 - Multiplayer co-op.
 - MMO-scale universe.
