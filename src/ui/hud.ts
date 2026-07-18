@@ -3,6 +3,7 @@ import { ALL_RESOURCE_IDS, RESOURCES, type RawResourceId } from '../core/resourc
 import { deriveStats } from '../building/shipStats';
 import { poiDef } from '../exploration/starSystem';
 import { listCheckpoints, restoreCheckpoint, wipeAll } from '../save/persistence';
+import { FLAGS } from '../core/flags';
 import { el } from './panels';
 import type { SpokenLine } from '../companion/gerty';
 import type { ScreenId } from '../core/events';
@@ -37,6 +38,7 @@ export class Hud {
   private typeTimer: number | null = null;
   private modal: HTMLElement;
   private hint: HTMLElement;
+  private devBadge: HTMLElement;
   private activeScreen: ScreenId = 'interior';
 
   constructor(private ctx: Ctx) {
@@ -76,6 +78,12 @@ export class Hud {
     this.location = el('span');
     this.location.id = 'location';
     top.appendChild(this.location);
+
+    this.devBadge = el('span', undefined, 'DEV');
+    this.devBadge.id = 'dev-badge';
+    this.devBadge.title = 'Dev mode active — full stock, bottomless tank. Type c-h-t to toggle.';
+    this.devBadge.style.display = 'none';
+    top.appendChild(this.devBadge);
 
     const nav = el('div');
     nav.id = 'nav';
@@ -172,6 +180,7 @@ export class Hud {
 
     const def = poiDef(s.currentPoi);
     this.location.textContent = `◈ ${def.name.toUpperCase()}`;
+    this.devBadge.style.display = this.ctx.store.hasFlag(FLAGS.DEV_MODE) ? '' : 'none';
 
     const atHome = s.currentPoi === 'foundry';
     this.navButtons.get('ship')!.disabled = this.activeScreen === 'interior';

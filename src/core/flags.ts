@@ -20,6 +20,9 @@ export type FlagValue = boolean | number | string;
  *    `collaborator.nature.*`.
  */
 export const FLAGS = {
+  // meta
+  DEV_MODE: 'dev.mode',
+
   // progression
   INTRO_DONE: 'intro.done',
   FIRST_SCAN: 'progress.firstScan',

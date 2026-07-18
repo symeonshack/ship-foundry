@@ -44,6 +44,7 @@ manager = new ScreenManager(canvas, bus, (dt) => {
   refinery.update(dt);
   gerty.update(dt);
   if (store.state.currentPoi === 'foundry') autoRefuel(store);
+  if (store.hasFlag(FLAGS.DEV_MODE)) devTopUp();
   saveTimer += dt;
   if (saveTimer > 5) {
     saveTimer = 0;
@@ -100,6 +101,54 @@ if (!store.hasFlag(INTEGER_CARGO_MIGRATION)) {
     }
   }
   store.setFlag(INTEGER_CARGO_MIGRATION);
+}
+
+// ---- dev mode: type "c h t" quickly to toggle ----
+// full stock, bottomless tank, everything scanned — for exploring/debugging.
+// Marked in the HUD; it taints the save it's used on, by design.
+import { ALL_RESOURCE_IDS } from './core/resources';
+import { deriveStats } from './building/shipStats';
+import { POI_IDS } from './exploration/starSystem';
+import { toast } from './ui/hud';
+
+const DEV_STOCK = 999;
+let chtBuffer: { key: string; at: number }[] = [];
+window.addEventListener('keydown', (ev) => {
+  const now = performance.now();
+  chtBuffer = [...chtBuffer.filter((e) => now - e.at < 1200), { key: ev.key.toLowerCase(), at: now }];
+  const typed = chtBuffer.map((e) => e.key).join('');
+  if (typed.endsWith('cht')) {
+    chtBuffer = [];
+    const on = !store.hasFlag(FLAGS.DEV_MODE);
+    store.setFlag(FLAGS.DEV_MODE, on);
+    if (on) {
+      for (const id of POI_IDS) store.poi(id).scanTier = 2;
+      toast('DEV MODE ON — full stock, bottomless tank, all sites surveyed', 'warn');
+      gerty.speakById('dev-mode');
+    } else {
+      // hand back a physically honest tank
+      store.state.fuel = Math.min(store.state.fuel, deriveStats(store.state.ship).fuelCap);
+      toast('Dev mode off — the universe is indifferent again', 'info');
+    }
+    store.changed();
+  }
+});
+
+function devTopUp(): void {
+  let dirty = false;
+  for (const id of ALL_RESOURCE_IDS) {
+    if ((store.state.stock[id] ?? 0) < DEV_STOCK) {
+      store.state.stock[id] = DEV_STOCK;
+      dirty = true;
+    }
+  }
+  // beyond physical capacity on purpose — any burn in the system is affordable
+  const devFuel = Math.max(deriveStats(store.state.ship).fuelCap, DEV_STOCK);
+  if (store.state.fuel < devFuel) {
+    store.state.fuel = devFuel;
+    dirty = true;
+  }
+  if (dirty) store.changed();
 }
 
 // dev-only handle for driving the game in automated verification

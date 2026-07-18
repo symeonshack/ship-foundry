@@ -92,6 +92,16 @@ html, body {
 #fuel-fill.low { background: var(--red); }
 
 #location { color: var(--accent); font-size: 13px; letter-spacing: 0.06em; }
+#dev-badge {
+  padding: 1px 8px;
+  border: 1px solid var(--amber);
+  border-radius: 4px;
+  color: var(--amber);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  animation: dev-pulse 2s infinite;
+}
+@keyframes dev-pulse { 50% { opacity: 0.45; } }
 #nav { margin-left: auto; display: flex; gap: 6px; }
 
 /* ---- side panel ---- */

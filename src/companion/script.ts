@@ -33,6 +33,9 @@ export const LINES: LineDef[] = [
   { id: 'fuel-low', trigger: 'fuel-low', maxTimes: 99, cooldownSec: 90, mood: 'hint', text: 'Fuel margin is thin. I recommend heading home while “recommend” is still the right word.' },
   { id: 'stranded', trigger: 'stranded', maxTimes: 99, cooldownSec: 60, mood: 'hint', text: 'We do not have the fuel to get home. Options: emergency burn — which means jettisoning the hold — or you make fuel appear. I’ll wait.' },
 
+  // ---- meta ----
+  { id: 'dev-mode', trigger: 'dev-mode', maxTimes: 99, cooldownSec: 10, text: 'Developer override accepted. Stock replenished, tank sealed full, survey archives unlocked. I saw nothing, and I will be logging that I saw nothing.' },
+
   // ---- narrative beats (placeholder-marked, engine-agnostic) ----
   { id: 'scan-anomaly', trigger: 'scan:anomaly', priority: 5, text: 'That is… not on any chart I hold. I have filed it under “geology” for now. The filing feels dishonest.', fragment: 'anomaly-scan' },
   { id: 'arrive-anomaly', trigger: 'arrive:anomaly', priority: 5, setFlags: [FLAGS.ANOMALY_VISITED, FLAGS.SEED_EVIDENCE], fragment: 'anomaly-visit', text: 'Structures confirmed. Old. Machine-built, machine-maintained, long abandoned by whatever maintained it. I have questions I am not currently able to ask out loud. [PLACEHOLDER — beat depends on final reveal pacing]' },
