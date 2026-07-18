@@ -286,7 +286,7 @@ export class EncounterScreen implements GameScreen {
     const b = box('Shared Structure');
     if (enc.solved) {
       b.appendChild(el('p', 'sub', 'It works — for both of you. The worker has already gone back to its own tasks, unhurried, as if this was always going to happen.'));
-      b.appendChild(button('Return to orbit', () => this.ctx.nav('starmap')));
+      b.appendChild(button('Board ship', () => this.ctx.nav('interior')));
       return;
     }
     b.appendChild(el('p', 'sub', 'Your goal: a powered conduit line from your terminal (blue) to the core, with an emitter beside the core. What the other builder needs, it will show you — by editing.'));
@@ -314,7 +314,7 @@ export class EncounterScreen implements GameScreen {
     if (this.tool === 'remove') b.appendChild(el('div', 'sub', 'Click a placed module to take it out.'));
 
     const nav = box('Ship');
-    nav.appendChild(button('Return to orbit', () => this.ctx.nav('starmap')));
+    nav.appendChild(button('Board ship', () => this.ctx.nav('interior')));
   }
 
   update(dt: number): void {

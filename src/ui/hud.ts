@@ -17,6 +17,7 @@ export function toast(text: string, kind: 'info' | 'warn' | 'bad' | 'good' = 'in
 }
 
 const SCREEN_HINTS: Record<ScreenId, string> = {
+  interior: 'SHIP — WASD to move, mouse to look (click the view to capture the cursor; arrows also look), E to interact. The map lives on the table; GERTY lives on the wall.',
   shipyard: 'SHIPYARD — pick a part, click a glowing socket to fit it. Click a fitted part to inspect or remove it. Watch the engines: glow means strain.',
   starmap: 'STAR MAP — click a contact to survey it. The outer ring is your point of no return; the inner ring gets you home again.',
   surface: 'SURFACE OPS — arm a rig, click a deposit to deploy. Hazards tick while you stay. The clock only matters down here.',
@@ -36,6 +37,7 @@ export class Hud {
   private typeTimer: number | null = null;
   private modal: HTMLElement;
   private hint: HTMLElement;
+  private activeScreen: ScreenId = 'interior';
 
   constructor(private ctx: Ctx) {
     const hud = document.getElementById('hud')!;
@@ -83,7 +85,7 @@ export class Hud {
       this.navButtons.set(key, b);
       nav.appendChild(b);
     };
-    addNav('starmap', 'STAR MAP', () => ctx.nav('starmap'));
+    addNav('ship', 'SHIP', () => ctx.nav('interior'));
     addNav('shipyard', 'SHIPYARD', () => ctx.nav('shipyard'));
     addNav('site', 'SITE', () => {
       const def = poiDef(ctx.store.state.currentPoi);
@@ -127,8 +129,15 @@ export class Hud {
 
     ctx.bus.on('state:changed', () => this.refresh());
     ctx.bus.on('screen:change', ({ screen }) => {
-      for (const [key, b] of this.navButtons) b.classList.toggle('active', key === screen || (key === 'site' && (screen === 'surface' || screen === 'encounter')));
+      this.activeScreen = screen;
+      for (const [key, b] of this.navButtons)
+        b.classList.toggle(
+          'active',
+          (key === 'ship' && screen === 'interior') || key === screen || (key === 'site' && (screen === 'surface' || screen === 'encounter')),
+        );
       this.hint.textContent = SCREEN_HINTS[screen];
+      // aboard, GERTY is a physical console — the comms box is for away operations
+      if (screen === 'interior') this.gertyBox.classList.remove('visible');
       this.refresh();
     });
     ctx.bus.on('gerty:line', ({ line }) => this.showGerty(line));
@@ -165,6 +174,7 @@ export class Hud {
     this.location.textContent = `◈ ${def.name.toUpperCase()}`;
 
     const atHome = s.currentPoi === 'foundry';
+    this.navButtons.get('ship')!.disabled = this.activeScreen === 'interior';
     this.navButtons.get('shipyard')!.disabled = !atHome;
     this.navButtons.get('shipyard')!.title = atHome ? '' : 'The shipyard is back at the Foundry.';
     this.navButtons.get('site')!.disabled = atHome;
@@ -172,6 +182,7 @@ export class Hud {
   }
 
   private showGerty(line: SpokenLine): void {
+    if (this.activeScreen === 'interior') return; // the console speech bubble handles it aboard
     if (this.gertyTimer) window.clearTimeout(this.gertyTimer);
     if (this.typeTimer) window.clearInterval(this.typeTimer);
     this.gertyBox.classList.add('visible');

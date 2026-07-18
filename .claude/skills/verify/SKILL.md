@@ -27,6 +27,13 @@ A known-good driver exists in past session scratchpads (`drive.mjs`); recreate f
 - Encounter sockets sit at `SOCKETS[i] * 1.7` on plane y≈0.66; collaborator turn resolves ~1.3s after a player action — wait ≥2.5s between moves. Known solution: conduit @ socket 6, conduit @ 2, emitter @ 0; collaborator supplies 7, 3, damper.
 - Endgame fixture (skip the grind): `store.addStock(...)`, push placements (`hullL` on `p1` socket 0; `sensor2`/`tank`s on its utility sockets), set `state.fuel`, then `store.changed()`.
 
+## Interior (Phase 1)
+
+- The game starts on the `interior` screen (first-person). Drive it with real key events: `KeyW/A/S/D` move, arrows look — but timed turns are unreliable under headless frame rates (`dt` clamps at 0.1s). Instead aim via the debug handle (`manager.active.controller.yaw = atan2(-dx, -dz)`) and walk with W-key bursts, polling `controller.position`.
+- Hotspots (interact radius 2.2): star-map table (0,-2.5), GERTY console (3.6,-0.5), rear hatch (0,4.9). `#interact-prompt` shows `[E] …` in range; `page.keyboard.press('KeyE')` triggers.
+- Aboard, GERTY speaks via `#gerty-bubble` (`.decline` class for refusals); the `#gerty` comms box only appears off-ship. GERTY queues lines with a busy window (long lines block ~12s) — `gerty.ask(topic)` jumps the queue.
+- Nav: no STAR MAP button; map opens only from the table console. Travel always lands on `interior`; the hatch exits by context.
+
 ## Gotchas
 
 - GERTY lines queue with cooldowns; ambient lines can lag their trigger by several seconds — assert on state/log, not on which line is currently showing.

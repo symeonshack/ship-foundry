@@ -394,7 +394,7 @@ export class SurfaceScreen implements GameScreen {
       const s = Math.floor(this.excursion % 60);
       clock.textContent = `On-site ${m}:${String(s).padStart(2, '0')} · deposits live: ${(poi.nodes ?? []).filter((n) => n.remaining > 0).length}`;
     });
-    site.appendChild(button('Return to orbit', () => this.ctx.nav('starmap')));
+    site.appendChild(button('Board ship', () => this.ctx.nav('interior')));
 
     if (this.def.special === 'anomaly') {
       const info = box('Site Null');

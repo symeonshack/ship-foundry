@@ -446,6 +446,147 @@ export function buildSocketMarker(color = C.accent): THREE.Mesh {
   return disc;
 }
 
+// ---- ship interior (Phase 1: one fixed core room, independent of exterior build) ----
+
+import type { Collider } from '../interior/playerController';
+import { POIS } from '../exploration/starSystem';
+
+export interface InteriorHotspot {
+  id: 'starmap' | 'gerty' | 'exit';
+  label: string;
+  x: number;
+  z: number;
+}
+
+export interface ShipInterior {
+  group: THREE.Group;
+  colliders: Collider[];
+  hotspots: InteriorHotspot[];
+}
+
+export function buildShipInterior(): ShipInterior {
+  const g = new THREE.Group();
+  const W = 8;
+  const H = 3;
+  const L = 10;
+  const hx = W / 2;
+  const hz = L / 2;
+
+  const wall = mat(0x2e3a42, { rough: 0.85, metal: 0.3 });
+  const deck = mat(0x232b31, { rough: 0.9, metal: 0.2 });
+  const trim = mat(0x1c242a, { rough: 0.8 });
+
+  g.add(at(box(W, 0.2, L, deck), 0, -0.1, 0));
+  g.add(at(box(W, 0.2, L, trim), 0, H + 0.1, 0));
+  // front wall (window end) and side walls
+  g.add(at(box(W, H, 0.2, wall), 0, H / 2, -hz - 0.1));
+  g.add(at(box(0.2, H, L, wall), -hx - 0.1, H / 2, 0));
+  g.add(at(box(0.2, H, L, wall), hx + 0.1, H / 2, 0));
+  // rear wall split around the hatch
+  const segW = (W - 1.5) / 2;
+  g.add(at(box(segW, H, 0.2, wall), -(0.75 + segW / 2), H / 2, hz + 0.1));
+  g.add(at(box(segW, H, 0.2, wall), 0.75 + segW / 2, H / 2, hz + 0.1));
+  g.add(at(box(1.5, H - 2.4, 0.2, wall), 0, 2.4 + (H - 2.4) / 2, hz + 0.1));
+  // structural ribs
+  for (let z = -4; z <= 4; z += 2) {
+    g.add(at(box(0.08, H, 0.3, trim), -hx + 0.06, H / 2, z));
+    g.add(at(box(0.08, H, 0.3, trim), hx - 0.06, H / 2, z));
+  }
+  // ceiling light bars
+  for (const x of [-1.5, 1.5]) {
+    g.add(at(box(0.35, 0.06, 6, mat(0xdfeaf2, { emissive: 0xcfe0ec, emissiveIntensity: 0.9 })), x, H - 0.04, 0));
+  }
+  // overhead pipes
+  for (const x of [-(hx - 0.35), hx - 0.35]) {
+    const pipe = cyl(0.07, 0.07, L - 0.6, mat(0x39454d, { metal: 0.5 }));
+    pipe.rotation.x = Math.PI / 2;
+    pipe.position.set(x, H - 0.25, 0);
+    g.add(pipe);
+  }
+
+  // cockpit window: frame + starfield pane
+  g.add(at(box(3.4, 1.6, 0.12, trim), 0, 1.7, -hz + 0.03));
+  g.add(at(box(3.1, 1.3, 0.06, mat(0x060b12, { emissive: 0x0b1624, emissiveIntensity: 0.9 })), 0, 1.7, -hz + 0.08));
+  const paneRand = mulberry32(77);
+  for (let i = 0; i < 16; i++) {
+    g.add(
+      at(
+        sph(0.018, mat(0xffffff, { emissive: 0xdfeaf2, emissiveIntensity: 1.2 }), 6),
+        (paneRand() - 0.5) * 2.9,
+        1.7 + (paneRand() - 0.5) * 1.1,
+        -hz + 0.12,
+      ),
+    );
+  }
+
+  // star-map table with a live miniature of the system
+  g.add(at(cyl(0.45, 0.55, 0.9, mat(0x39454d, { metal: 0.4 })), 0, 0.45, -2.5));
+  g.add(at(cyl(1.05, 1.05, 0.1, trim), 0, 0.95, -2.5));
+  g.add(
+    at(
+      cyl(0.95, 0.95, 0.03, mat(0x59d6ff, { emissive: 0x59d6ff, emissiveIntensity: 0.5, transparent: true, opacity: 0.35 })),
+      0,
+      1.02,
+      -2.5,
+    ),
+  );
+  const holo = new THREE.Group();
+  holo.name = 'holo';
+  holo.position.set(0, 1.14, -2.5);
+  const SCALE = 1 / 52;
+  for (const def of Object.values(POIS)) {
+    const orb = sph(def.kind === 'planet' ? 0.08 : def.kind === 'home' ? 0.06 : 0.045, mat(def.color, { emissive: def.color, emissiveIntensity: 0.8 }), 8);
+    orb.position.set(def.pos[0] * SCALE, 0.06, def.pos[1] * SCALE);
+    holo.add(orb);
+  }
+  g.add(holo);
+
+  // GERTY console on the starboard wall: frame, screen, lens
+  g.add(at(box(0.15, 1.7, 1.6, trim), hx - 0.08, 1.5, -0.5));
+  const screen = at(box(0.07, 0.75, 1.05, mat(0x0c2a26, { emissive: 0x1f6a5a, emissiveIntensity: 0.6 })), hx - 0.18, 1.7, -0.5);
+  screen.name = 'gerty-screen';
+  g.add(screen);
+  const eye = at(sph(0.08, mat(0xffffff, { emissive: 0x7dffa8, emissiveIntensity: 1.1 }), 10), hx - 0.2, 2.42, -0.5);
+  eye.name = 'gerty-eye';
+  g.add(eye);
+  g.add(at(box(0.45, 0.07, 1.3, trim), hx - 0.35, 1.0, -0.5));
+
+  // rear hatch
+  const door = at(box(1.4, 2.35, 0.15, mat(0x39454d, { metal: 0.4 })), 0, 1.18, hz + 0.02);
+  door.name = 'hatch-door';
+  g.add(door);
+  g.add(at(box(1.4, 0.16, 0.16, mat(0xffb454, { emissive: 0xffb454, emissiveIntensity: 0.4 })), 0, 1.95, hz));
+  g.add(at(box(0.28, 0.38, 0.1, mat(0x1c242a, { emissive: 0x59d6ff, emissiveIntensity: 0.35 })), 0.95, 1.35, hz + 0.02));
+
+  // bunk + crates for density
+  g.add(at(box(1.1, 0.45, 2.0, mat(0x3f4c56)), -3.35, 0.3, 3.4));
+  g.add(at(box(0.5, 0.14, 0.7, mat(0x8a949c)), -3.35, 0.6, 2.7));
+  g.add(at(box(0.75, 0.75, 0.75, mat(0x6d7a68, { flat: true })), -3.3, 0.38, -3.8));
+  const crate2 = at(box(0.65, 0.65, 0.65, mat(0x7a6a56, { flat: true })), 2.9, 0.33, 3.9);
+  crate2.rotation.y = 0.4;
+  g.add(crate2);
+
+  const colliders: Collider[] = [
+    { minX: -hx, maxX: hx, minZ: -hz - 1, maxZ: -hz + 0.15 },
+    { minX: -hx, maxX: hx, minZ: hz - 0.15, maxZ: hz + 1 },
+    { minX: -hx - 1, maxX: -hx + 0.15, minZ: -hz, maxZ: hz },
+    { minX: hx - 0.15, maxX: hx + 1, minZ: -hz, maxZ: hz },
+    { minX: -1.15, maxX: 1.15, minZ: -3.65, maxZ: -1.35 }, // map table
+    { minX: hx - 0.6, maxX: hx, minZ: -1.4, maxZ: 0.4 }, // gerty console
+    { minX: -4.2, maxX: -2.7, minZ: 2.3, maxZ: 4.5 }, // bunk
+    { minX: -3.75, maxX: -2.85, minZ: -4.25, maxZ: -3.35 }, // crate
+    { minX: 2.45, maxX: 3.35, minZ: 3.45, maxZ: 4.35 }, // crate
+  ];
+
+  const hotspots: InteriorHotspot[] = [
+    { id: 'starmap', label: 'Open star map', x: 0, z: -2.5 },
+    { id: 'gerty', label: 'GERTY console', x: hx - 0.4, z: -0.5 },
+    { id: 'exit', label: 'Exit hatch', x: 0, z: hz - 0.1 },
+  ];
+
+  return { group: g, colliders, hotspots };
+}
+
 // ---- star map markers ----
 
 export type PoiKind = 'home' | 'asteroid' | 'moon' | 'planet' | 'anomaly' | 'signal';

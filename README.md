@@ -13,8 +13,9 @@ npm test         # unit tests (stats, refinery, GERTY, encounter logic)
 
 ## Play
 
+- **Your ship (first-person hub)**: you wake aboard. WASD to move, mouse to look (click the view to capture the cursor; arrow keys also look), E to interact. The star map lives on the holo table, GERTY lives on the wall console, and the rear hatch leads outside. Travel always ends back aboard.
 - **Shipyard** (at the Foundry): pick a part, click a glowing socket to fit it. Click a fitted part to remove/refund it. Engines glow under strain; off-axis loads make the stack wobble.
-- **Star map**: click a contact to survey it. Scan before you commit fuel. The outer ring is your point of no return; the inner ring gets you home again — both move live as you build.
+- **Star map** (via the ship's console): click a contact to survey it. Scan before you commit fuel. The outer ring is your point of no return; the inner ring gets you home again — both move live as you build.
 - **Surface ops**: arm a rig, click a deposit. Hazards degrade equipment in real time while you stay; the hold and the tank decide when you leave.
 - **Refinery** (at the Foundry): raw stock in, usable stock out, in real time.
 - **GERTY** flags hazards beyond your equipment ratings and occasionally declines to answer. The logbook (LOG) collects discoveries; some entries can be raised with GERTY directly.

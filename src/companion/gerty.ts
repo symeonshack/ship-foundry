@@ -54,7 +54,13 @@ export interface TopicDef {
 export class Gerty {
   private queue: SpokenLine[] = [];
   private busyUntil = 0;
+  private history: SpokenLine[] = [];
   onFragment: ((key: string) => void) | null = null;
+
+  /** everything spoken this session, oldest first — the shipboard console log */
+  transcript(): SpokenLine[] {
+    return this.history;
+  }
 
   constructor(
     private store: GameStore,
@@ -155,6 +161,8 @@ export class Gerty {
     if (now < this.busyUntil || this.queue.length === 0) return;
     const line = this.queue.shift()!;
     this.busyUntil = now + line.duration + 0.6;
+    this.history.push(line);
+    if (this.history.length > 12) this.history.shift();
     this.store.bus.emit('gerty:line', { line });
   }
 }

@@ -298,7 +298,7 @@ export class ShipyardScreen implements GameScreen {
     readout.appendChild(el('div', 'sub', `Shielding — radiation ${this.stats.radRating || '—'} · thermal ${this.stats.thermalRating || '—'}`));
     readout.appendChild(el('div', 'sub', `Rigs aboard — drill ×${this.stats.rigCounts.drill} · cryo ×${this.stats.rigCounts.cryo}`));
     if (!this.stats.hasLifeSupport) readout.appendChild(el('div', 'sub', '⚠ No life support. The ship stays docked.'));
-    readout.appendChild(button('Launch → Star Map', () => this.ctx.nav('starmap')));
+    readout.appendChild(button('Board ship', () => this.ctx.nav('interior')));
 
     // selected placement
     if (this.selectedPlacement) {

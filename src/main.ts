@@ -12,9 +12,9 @@ import { ShipyardScreen } from './building/shipyard';
 import { StarMapScreen } from './exploration/starMap';
 import { SurfaceScreen } from './mining/surfaceScene';
 import { EncounterScreen } from './encounter/encounterScene';
+import { InteriorScreen } from './interior/interiorScene';
 import { Hud } from './ui/hud';
 import type { Ctx } from './core/ctx';
-import { poiDef } from './exploration/starSystem';
 
 const canvas = document.getElementById('view') as HTMLCanvasElement;
 
@@ -50,6 +50,7 @@ manager = new ScreenManager(canvas, bus, (dt) => {
   }
 });
 
+manager.register(new InteriorScreen(ctx, canvas));
 manager.register(new ShipyardScreen(ctx, canvas));
 manager.register(new StarMapScreen(ctx, canvas));
 manager.register(new SurfaceScreen(ctx, canvas));
@@ -71,11 +72,8 @@ bus.on('travel:arrive', ({ poiId }) => {
 });
 bus.on('encounter:solved', () => pushCheckpoint(store.state, 'The Relay — structure active', true));
 
-// resume where the save left off
-const here = poiDef(store.state.currentPoi);
-const initial: ScreenId =
-  store.state.currentPoi === 'foundry' ? 'shipyard' : here.special === 'signal' ? 'encounter' : 'surface';
-manager.show(initial);
+// you always come to aboard your own ship
+manager.show('interior');
 manager.start();
 
 // dev-only handle for driving the game in automated verification

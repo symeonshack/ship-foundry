@@ -207,7 +207,6 @@ export class StarMapScreen implements GameScreen {
     store.bus.emit('travel:depart', { from, to: id });
     store.state.fuel -= cost;
     store.state.currentPoi = id;
-    const def = poiDef(id);
     if (id === 'foundry') {
       arriveHome(store);
     } else {
@@ -216,7 +215,8 @@ export class StarMapScreen implements GameScreen {
     store.bus.emit('travel:arrive', { poiId: id });
     checkFuelState(store, this.stats);
     store.changed();
-    this.ctx.nav(id === 'foundry' ? 'shipyard' : def.special === 'signal' ? 'encounter' : 'surface');
+    // travel always ends aboard — the hatch leads out
+    this.ctx.nav('interior');
   }
 
   private renderPanel(): void {
@@ -287,6 +287,9 @@ export class StarMapScreen implements GameScreen {
       const help = box('System Chart');
       help.appendChild(el('p', 'sub', 'Click a contact to survey it. Solid outer ring: point of no return. Inner ring: out-and-back on the current tank.'));
     }
+
+    const ship = box('Ship');
+    ship.appendChild(button('Step back from the console', () => this.ctx.nav('interior')));
 
     // stranded escape hatch
     if (canEmergencyReturn(store)) {

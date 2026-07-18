@@ -5,7 +5,7 @@ import type { HazardType } from '../exploration/starSystem';
 import type { SpokenLine } from '../companion/gerty';
 import type { Gesture } from '../encounter/collaborator';
 
-export type ScreenId = 'starmap' | 'shipyard' | 'surface' | 'encounter';
+export type ScreenId = 'interior' | 'starmap' | 'shipyard' | 'surface' | 'encounter';
 
 export interface GameEvents {
   'screen:change': { screen: ScreenId };
