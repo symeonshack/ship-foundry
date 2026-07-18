@@ -46,6 +46,8 @@ export class PlayerController {
   yaw = 0;
   pitch = 0;
   readonly position: THREE.Vector3;
+  /** terrain height sampler; null = flat deck at y 0 (the ship interior) */
+  groundHeight: ((x: number, z: number) => number) | null = null;
   private keys = new Set<string>();
   private disposers: (() => void)[] = [];
   private active = false;
@@ -133,7 +135,8 @@ export class PlayerController {
       this.position.z = next.z;
     }
 
-    this.camera.position.set(this.position.x, EYE_HEIGHT, this.position.z);
+    const ground = this.groundHeight ? this.groundHeight(this.position.x, this.position.z) : 0;
+    this.camera.position.set(this.position.x, ground + EYE_HEIGHT, this.position.z);
     this.camera.rotation.set(0, 0, 0);
     this.camera.rotateY(this.yaw);
     this.camera.rotateX(this.pitch);

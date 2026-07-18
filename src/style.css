@@ -260,7 +260,7 @@ html, body {
 .log-entry .ask button { font-size: 12px; padding: 3px 10px; }
 
 /* ---- interior: interaction prompt + GERTY speech bubble ---- */
-#interact-prompt {
+.interact-prompt {
   position: absolute;
   left: 50%;
   bottom: 18%;
@@ -273,7 +273,7 @@ html, body {
   letter-spacing: 0.03em;
   pointer-events: none;
 }
-#interact-prompt .key {
+.interact-prompt .key {
   display: inline-block;
   min-width: 20px;
   text-align: center;

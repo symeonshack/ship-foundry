@@ -34,3 +34,27 @@ describe('moveWithCollision', () => {
     expect(narrow.x).toBeCloseTo(3.7); // smaller body fits
   });
 });
+
+describe('PlayerController ground height', () => {
+  const make = async () => {
+    const THREE = await import('three');
+    const { PlayerController, EYE_HEIGHT } = await import('../src/interior/playerController');
+    const camera = new THREE.PerspectiveCamera();
+    const controller = new PlayerController(camera, {} as HTMLCanvasElement, [], new THREE.Vector3(1, 0, 2));
+    (controller as unknown as { active: boolean }).active = true; // bypass DOM attach in node
+    return { camera, controller, EYE_HEIGHT };
+  };
+
+  it('walks a flat deck by default', async () => {
+    const { camera, controller, EYE_HEIGHT } = await make();
+    controller.update(0.016);
+    expect(camera.position.y).toBeCloseTo(EYE_HEIGHT);
+  });
+
+  it('follows the terrain when a ground sampler is set', async () => {
+    const { camera, controller, EYE_HEIGHT } = await make();
+    controller.groundHeight = (x, z) => x + z; // 1 + 2 = 3 at the spawn
+    controller.update(0.016);
+    expect(camera.position.y).toBeCloseTo(3 + EYE_HEIGHT);
+  });
+});

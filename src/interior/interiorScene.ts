@@ -62,8 +62,7 @@ export class InteriorScreen implements GameScreen {
     );
 
     const hud = document.getElementById('hud')!;
-    this.prompt = el('div');
-    this.prompt.id = 'interact-prompt';
+    this.prompt = el('div', 'interact-prompt');
     this.prompt.style.display = 'none';
     hud.appendChild(this.prompt);
     this.bubble = el('div');

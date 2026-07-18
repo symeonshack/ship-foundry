@@ -40,6 +40,12 @@ A known-good driver exists in past session scratchpads (`drive.mjs`); recreate f
 - Screen internals via `manager.screens.get('flight')`: `.phase` ('cruise'|'descent'|'touchdown'), `.journey.progress`, `.descent.{altitude,velocity}`, `.hardLanding`. Dev mode adds an "Autopilot (dev)" panel button that lands instantly.
 - Reload mid-flight boots already-arrived aboard (by design; that hop's arrive-triggered GERTY line/fragment is skipped).
 
+## Hybrid surface (Phase 3)
+
+- Surface screen has `mode: 'command' | 'foot'`; Tab toggles (real keydown). Foot mode reuses the interior controller (`manager.active.controller`) with `groundHeight` terrain sampling — steer via yaw + W bursts as in the interior recipe. Prompts use `.interact-prompt` (class, not id — interior and surface each own one).
+- E-interaction targets the NEAREST candidate (nodes within 3, lander within 3.4; lander hard-wins under 2.6) — scripts must not assume the aimed-at node is the acted-on node.
+- Shared-state checks: deploy by click in command → Tab → same rig in `sc.rigs`; cargo grows while walking; panel works in both modes.
+
 ## Gotchas
 
 - GERTY lines queue with cooldowns; ambient lines can lag their trigger by several seconds — assert on state/log, not on which line is currently showing.

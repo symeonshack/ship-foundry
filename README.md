@@ -17,7 +17,7 @@ npm test         # unit tests (stats, refinery, GERTY, encounter logic)
 - **Shipyard** (at the Foundry): pick a part, click a glowing socket to fit it. Click a fitted part to remove/refund it. Engines glow under strain; off-axis loads make the stack wobble.
 - **Star map** (via the ship's console): click a contact to survey it. Scan before you commit fuel. The outer ring is your point of no return; the inner ring gets you home again — both move live as you build.
 - **Flight**: travel is flown, not teleported. A/D steer against drift (your own off-axis cargo talking back), W/S throttle; clean flying recovers a little fuel, sloppy flying burns extra. On descent, HOLD SPACE to retro-burn — touch down under 2.5 or arrive loudly (cosmetic, for now). Better engines mean shorter trips and stronger brakes.
-- **Surface ops**: arm a rig, click a deposit. Hazards degrade equipment in real time while you stay; the hold and the tank decide when you leave.
+- **Surface ops**: arm a rig, click a deposit — or press **TAB** to drop on foot at the same live site: walk the terrain, inspect deposits up close, deploy/recall rigs with **E**, board the lander to leave. Both views share one simulation; nothing pauses because you got out. Hazards degrade equipment in real time while you stay; the hold and the tank decide when you leave.
 - **Refinery** (at the Foundry): raw stock in, usable stock out, in real time.
 - **GERTY** flags hazards beyond your equipment ratings and occasionally declines to answer. The logbook (LOG) collects discoveries; some entries can be raised with GERTY directly.
 - Far out, something is building. It doesn't speak. Bring parts.

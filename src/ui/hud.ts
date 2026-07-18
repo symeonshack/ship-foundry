@@ -22,7 +22,7 @@ const SCREEN_HINTS: Record<ScreenId, string> = {
   flight: 'TRANSIT — A/D steer against drift, W/S throttle. On descent: HOLD SPACE to retro-burn before the ground arrives.',
   shipyard: 'SHIPYARD — pick a part, click a glowing socket to fit it. Click a fitted part to inspect or remove it. Watch the engines: glow means strain.',
   starmap: 'STAR MAP — click a contact to survey it. The outer ring is your point of no return; the inner ring gets you home again.',
-  surface: 'SURFACE OPS — arm a rig, click a deposit to deploy. Hazards tick while you stay. The clock only matters down here.',
+  surface: 'SURFACE OPS — arm a rig, click a deposit to deploy. TAB drops you on foot at the same live site: walk, inspect, E to interact. Hazards tick while you stay, in either view.',
   encounter: 'THE RELAY — no shared language. Place a module; watch what it keeps, what it removes, what it points at.',
 };
 
