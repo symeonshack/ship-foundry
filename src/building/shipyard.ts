@@ -95,7 +95,8 @@ export class ShipyardScreen implements GameScreen {
       g.add(buildPartMesh(p.partId));
       g.userData.uid = p.uid;
       if (p.parent === null) {
-        g.position.set(0, 0.5, 0);
+        // hoisted above the pad so the downward-facing mount sockets stay visible
+        g.position.set(0, 1.7, 0);
         this.shipGroup.add(g);
       } else {
         const parentPlacement = byUid.get(p.parent)!;
@@ -392,10 +393,11 @@ export class ShipyardScreen implements GameScreen {
     this.shipGroup.rotation.z = amp > 0.001 ? Math.sin(this.t * 3.4) * amp : 0;
     this.shipGroup.rotation.x = amp > 0.001 ? Math.cos(this.t * 2.7) * amp * 0.6 : 0;
 
-    // marker pulse
+    // marker pulse — glow and breathe so free sockets are unmissable
     for (const m of this.markers) {
       const mm = m.material as THREE.MeshStandardMaterial;
-      mm.emissiveIntensity = 0.5 + Math.sin(this.t * 5) * 0.3;
+      mm.emissiveIntensity = 0.6 + Math.sin(this.t * 5) * 0.35;
+      m.scale.setScalar(1 + Math.sin(this.t * 5) * 0.18);
     }
   }
 }

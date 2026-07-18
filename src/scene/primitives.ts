@@ -429,15 +429,20 @@ export function buildTerminal(owner: 'player' | 'collaborator'): THREE.Group {
  * along a socket's +Y.
  */
 export function buildSocketMarker(color = C.accent): THREE.Mesh {
-  const discMat = mat(color, { emissive: color, emissiveIntensity: 0.4, transparent: true, opacity: 0.16 });
+  const discMat = mat(color, { emissive: color, emissiveIntensity: 0.4, transparent: true, opacity: 0.2 });
   discMat.side = THREE.DoubleSide;
-  const disc = new THREE.Mesh(new THREE.CircleGeometry(0.42, 24), discMat);
+  const disc = new THREE.Mesh(new THREE.CircleGeometry(0.5, 24), discMat);
   disc.name = 'socket-marker';
-  const ringMat = mat(color, { emissive: color, emissiveIntensity: 0.7, transparent: true, opacity: 0.85 });
+  const ringMat = mat(color, { emissive: color, emissiveIntensity: 0.9, transparent: true, opacity: 0.9 });
   ringMat.side = THREE.DoubleSide;
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.035, 8, 20), ringMat);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.38, 0.045, 8, 24), ringMat);
   ring.name = 'socket-marker';
   disc.add(ring);
+  // beacon orb so the socket reads from any camera angle, even edge-on or occluded
+  const orb = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 10), mat(color, { emissive: color, emissiveIntensity: 1.4 }));
+  orb.name = 'socket-marker';
+  orb.position.z = 0.16;
+  disc.add(orb);
   return disc;
 }
 
