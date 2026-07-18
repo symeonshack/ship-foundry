@@ -90,6 +90,7 @@ export function createNewGame(): GameState {
   // salvage from the deployment platform — enough to make the first excursion decisions matter
   stock.alloy = 4;
   stock.ceramic = 2;
+  stock.fuel = 8;
 
   return {
     version: 1,
@@ -170,6 +171,18 @@ export class GameStore {
       this.changed();
     }
     return added;
+  }
+
+  /** jettison up to n units of a held resource; returns the amount actually dumped */
+  dumpCargo(id: RawResourceId, n: number): number {
+    const have = this.state.cargo[id] ?? 0;
+    const removed = Math.min(have, n);
+    if (removed <= 0) return 0;
+    const left = have - removed;
+    if (left <= 0.001) delete this.state.cargo[id];
+    else this.state.cargo[id] = left;
+    this.changed();
+    return removed;
   }
 
   unloadCargo(): void {

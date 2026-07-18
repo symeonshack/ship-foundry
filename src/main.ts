@@ -76,6 +76,13 @@ bus.on('encounter:solved', () => pushCheckpoint(store.state, 'The Relay — stru
 manager.show('interior');
 manager.start();
 
+// retro-apply the starting fuel reserve to saves created before it existed
+const FUEL_RESERVE_MIGRATION = 'migration.fuelReserve';
+if (!store.hasFlag(FUEL_RESERVE_MIGRATION)) {
+  if (!isNewGame) store.addStock('fuel', 8);
+  store.setFlag(FUEL_RESERVE_MIGRATION);
+}
+
 // dev-only handle for driving the game in automated verification
 if (import.meta.env.DEV) {
   (window as unknown as Record<string, unknown>).__game = { ctx, manager };

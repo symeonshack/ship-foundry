@@ -11,6 +11,8 @@ export interface ActiveRig {
   nodeId: string;
   /** 0..100; the rig is lost at 0 */
   integrity: number;
+  /** paused rigs stop extracting — but hazards keep chewing on them */
+  paused: boolean;
 }
 
 export const EXTRACT_RATE: Record<RigType, number> = { drill: 0.9, cryo: 0.8 };

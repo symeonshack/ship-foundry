@@ -5,6 +5,7 @@
  * the collaborators' nature) drops in as pure text edits.
  */
 import { FLAGS } from '../core/flags';
+import { deriveStats } from '../building/shipStats';
 import type { LineDef, TopicDef } from './gerty';
 
 export const LINES: LineDef[] = [
@@ -16,6 +17,7 @@ export const LINES: LineDef[] = [
   // ---- loop feedback ----
   { id: 'first-scan', trigger: 'scan', priority: 2, text: 'Survey data logged. Composition and hazard profile are on the site card — worth reading before you spend the fuel.', mood: 'hint' },
   { id: 'first-arrive', trigger: 'arrive', priority: 1, when: ({ store }) => store.state.currentPoi !== 'foundry', text: 'Touchdown. Deploy a rig on a deposit and it will do the patient work. Watch its integrity lamp.' , mood: 'hint' },
+  { id: 'ice-hint', trigger: 'arrive:nearRock', priority: 3, mood: 'hint', when: ({ store }) => deriveStats(store.state.ship).rigCounts.cryo === 0, text: 'There is water ice in the shadowed seams here. Ice becomes fuel, once the refinery has its way with it. A cryo rig would pay for itself in two trips — I mention it because fuel anxiety is bad for your vitals.' },
   { id: 'first-mine', trigger: 'mine', priority: 2, text: 'Extraction nominal. The hold fills; the hold comes home; the refinery makes it useful. That’s the whole economy out here.' },
   { id: 'first-refine', trigger: 'refine', priority: 2, setFlags: [FLAGS.FIRST_REFINE], text: 'First batch through the refinery. It smells terrible. I mention it because you can’t smell it, and someone should.' },
   { id: 'first-build', trigger: 'build', priority: 2, setFlags: [FLAGS.FIRST_BUILD], text: 'New hardware fitted. The range ring on the map has already updated — I keep it honest in real time.' },

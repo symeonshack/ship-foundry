@@ -54,6 +54,7 @@ export class SurfaceScreen implements GameScreen {
   private cargoFullSaid = false;
   private t = 0;
   private panelUpdaters: (() => void)[] = [];
+  private panelSig: string | null = null;
   private unsub: (() => void)[] = [];
 
   constructor(private ctx: Ctx, canvas: HTMLCanvasElement) {
@@ -77,8 +78,7 @@ export class SurfaceScreen implements GameScreen {
     this.excursion = 0;
     this.cargoFullSaid = false;
     this.buildSite();
-    this.renderPanel();
-    this.unsub.push(this.ctx.bus.on('state:changed', () => this.renderPanel()));
+    this.panelSig = null;
   }
 
   exit(): void {
@@ -146,7 +146,29 @@ export class SurfaceScreen implements GameScreen {
 
     // deposit nodes (generated once, persisted)
     const poi = this.ctx.store.poi(this.def.id);
-    if (poi.nodes === null) poi.nodes = this.generateNodes(terrain);
+    if (poi.nodes === null) {
+      poi.nodes = this.generateNodes(terrain);
+    } else {
+      // saves from before a composition change: add nodes for any resource
+      // this site now offers that the stored set doesn't have
+      const present = new Set(poi.nodes.map((n) => n.resource));
+      for (const [res, richness] of Object.entries(this.def.composition)) {
+        if (present.has(res as RawResourceId)) continue;
+        const count = Math.round(richness * 4) + 1;
+        for (let i = 0; i < count; i++) {
+          const a = terrain.rand() * Math.PI * 2;
+          const r = 7 + terrain.rand() * 19;
+          poi.nodes.push({
+            id: this.ctx.store.uid('n'),
+            resource: res as RawResourceId,
+            remaining: Math.floor(8 + terrain.rand() * 8),
+            x: Math.cos(a) * r,
+            z: Math.sin(a) * r,
+            collapseIn: this.def.hazard.type === 'unstable' ? 18 + terrain.rand() * 12 : null,
+          });
+        }
+      }
+    }
     for (const node of poi.nodes) {
       if (node.remaining <= 0) continue;
       const g = buildDepositNode(node.resource);
@@ -241,7 +263,7 @@ export class SurfaceScreen implements GameScreen {
   }
 
   private deployRig(type: RigType, node: NodeState): void {
-    const rig: ActiveRig = { id: this.ctx.store.uid('r'), type, nodeId: node.id, integrity: 100 };
+    const rig: ActiveRig = { id: this.ctx.store.uid('r'), type, nodeId: node.id, integrity: 100, paused: false };
     this.rigs.push(rig);
     const mesh = buildRigDeployed(type);
     mesh.position.set(node.x + 1.6, this.terrain!.heightAt(node.x + 1.6, node.z), node.z);
@@ -301,9 +323,9 @@ export class SurfaceScreen implements GameScreen {
       const node = nodes.find((n) => n.id === rig.nodeId);
       if (!node) continue;
 
-      // extraction into the hold
-      const want = Math.min(EXTRACT_RATE[rig.type] * dt, node.remaining);
-      const added = store.addCargo(node.resource, want, this.stats.cargoCap);
+      // extraction into the hold (paused rigs sit idle on the deposit)
+      const want = rig.paused ? 0 : Math.min(EXTRACT_RATE[rig.type] * dt, node.remaining);
+      const added = want > 0 ? store.addCargo(node.resource, want, this.stats.cargoCap) : 0;
       if (added > 0) {
         node.remaining -= added;
         this.cargoFullSaid = false;
@@ -358,20 +380,38 @@ export class SurfaceScreen implements GameScreen {
 
     // ambient animation
     for (const [rigId, mesh] of this.rigMeshes) {
-      const spin = mesh.getObjectByName('spin');
-      if (spin) spin.rotation.y += dt * 6;
       const rig = this.rigs.find((r) => r.id === rigId);
+      const spin = mesh.getObjectByName('spin');
+      if (spin && !rig?.paused) spin.rotation.y += dt * 6;
       const lamp = mesh.getObjectByName('lamp') as THREE.Mesh | undefined;
       if (rig && lamp) {
         const m = lamp.material as THREE.MeshStandardMaterial;
-        const f = rig.integrity / 100;
-        m.emissive.setRGB(1 - f, f, 0.15);
+        if (rig.paused) {
+          m.emissive.setHex(0x59d6ff);
+        } else {
+          const f = rig.integrity / 100;
+          m.emissive.setRGB(1 - f, f, 0.15);
+        }
       }
     }
     for (const z of this.zones) {
       (z.mesh.material as THREE.MeshStandardMaterial).opacity = 0.08 + Math.sin(this.t * 2.4) * 0.04;
     }
 
+    // rebuild the panel only when its STRUCTURE changes (rigs, pause states,
+    // which resources are held) — amounts update live via panelUpdaters, so
+    // buttons stay stable under the cursor during continuous extraction
+    const sig =
+      this.rigs.map((r) => r.id + (r.paused ? 'p' : '')).join('|') +
+      '#' +
+      Object.entries(store.state.cargo)
+        .filter(([, n]) => n > 0)
+        .map(([k]) => k)
+        .join(',');
+    if (sig !== this.panelSig) {
+      this.panelSig = sig;
+      this.renderPanel();
+    }
     for (const fn of this.panelUpdaters) fn();
   }
 
@@ -402,7 +442,7 @@ export class SurfaceScreen implements GameScreen {
       return;
     }
 
-    // hold
+    // hold — with per-resource jettison so a bad mix isn't a wasted trip
     const hold = box('Hold');
     const holdBar = bar(0, 'var(--accent)');
     hold.appendChild(holdBar);
@@ -413,6 +453,31 @@ export class SurfaceScreen implements GameScreen {
       (holdBar.firstElementChild as HTMLElement).style.width = `${Math.round((total / Math.max(1, this.stats.cargoCap)) * 100)}%`;
       holdLabel.textContent = `${total.toFixed(1)} / ${this.stats.cargoCap}`;
     });
+    for (const [res, amount] of Object.entries(store.state.cargo)) {
+      if (amount <= 0) continue;
+      const id = res as RawResourceId;
+      const row = el('div', 'row');
+      const name = el('span', 'grow', RESOURCES[id].name);
+      name.style.fontSize = '12px';
+      row.appendChild(name);
+      const amt = el('span', undefined, amount.toFixed(1));
+      this.panelUpdaters.push(() => {
+        amt.textContent = (store.state.cargo[id] ?? 0).toFixed(1);
+      });
+      row.appendChild(amt);
+      const dumpOne = button('▼1', () => {
+        if (store.dumpCargo(id, 1) > 0) toast(`Jettisoned 1 ${RESOURCES[id].name.toLowerCase()}`, 'info');
+      });
+      dumpOne.title = 'Jettison one unit';
+      row.appendChild(dumpOne);
+      const dumpAll = button('▼ all', () => {
+        const n = store.dumpCargo(id, Infinity);
+        if (n > 0) toast(`Jettisoned ${n.toFixed(1)} ${RESOURCES[id].name.toLowerCase()}`, 'warn');
+      });
+      dumpAll.title = 'Jettison everything of this';
+      row.appendChild(dumpAll);
+      hold.appendChild(row);
+    }
 
     // rigs
     const rigsBox = box('Extraction Rigs');
@@ -442,6 +507,12 @@ export class SurfaceScreen implements GameScreen {
         inner.style.width = `${Math.max(0, Math.round(rig.integrity))}%`;
         inner.style.background = rig.integrity > 55 ? 'var(--green)' : rig.integrity > 25 ? 'var(--amber)' : 'var(--red)';
       });
+      const pause = button(rig.paused ? 'Resume' : 'Pause', () => {
+        rig.paused = !rig.paused;
+        this.renderPanel();
+      });
+      if (rig.paused) pause.classList.add('active');
+      row.appendChild(pause);
       row.appendChild(button('Recall', () => this.recallRig(rig.id)));
       rigsBox.appendChild(row);
     }
