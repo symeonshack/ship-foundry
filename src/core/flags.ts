@@ -34,6 +34,9 @@ export const FLAGS = {
   SIGNAL_SCANNED: 'progress.signalScanned',
   ENCOUNTER_STARTED: 'encounter.started',
   ENCOUNTER_SOLVED: 'encounter.solved',
+  ARCHIVE_ENTERED: 'archive.entered',
+  CUSTODIAN_SEEN: 'archive.custodianSeen',
+  ARCHIVE_TAKEN: 'archive.taken',
 
   // narrative — settled direction (content still placeholder)
   MISSION_DOUBT: 'narrative.missionDoubt', // player has evidence the briefing was incomplete

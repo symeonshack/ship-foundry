@@ -37,6 +37,13 @@ export const LINES: LineDef[] = [
   { id: 'first-flight', trigger: 'flight', priority: 2, mood: 'hint', text: 'You have the stick. Drift is your own cargo arrangement talking back — counter it, and mind the throttle. I’ll handle everything except the flying.' },
   { id: 'hard-landing-1', trigger: 'hard-landing', maxTimes: 99, cooldownSec: 30, text: 'Logged as a “firm arrival.” The landing gear disagrees with my phrasing. Hold the retro-burn earlier next time.' },
 
+  // ---- the Archive (Phase 4; custodian nature stays inside the open question — data only) ----
+  { id: 'structure-enter', trigger: 'structure-enter', priority: 4, text: 'Interior atmosphere is stale but breathable. Something in here still draws power on a maintenance duty cycle. I would treat everything in this place as owned.' },
+  { id: 'custodian-seen', trigger: 'custodian-seen', priority: 5, setFlags: [FLAGS.CUSTODIAN_SEEN, FLAGS.COLLAB_NATURE_HINTED], mood: 'hint', text: 'That unit’s directive is not cooperation — look at what it positions itself between you and. It isn’t angry. It’s thorough. Note what it protects and think about what its orders literally say.' },
+  { id: 'custodian-shoved', trigger: 'custodian-shoved', maxTimes: 99, cooldownSec: 25, text: 'Escorted out, firmly, and — note — undamaged. It has rules. Rules can be read. Rules can be satisfied to the letter.' },
+  { id: 'custodian-attend', trigger: 'custodian-attend', priority: 4, mood: 'hint', text: 'It dropped everything for the preservation cycle. Of course it did — that IS its job. The archive is currently better protected than you are observed.' },
+  { id: 'archive-taken', trigger: 'archive-taken', priority: 5, text: 'You didn’t break a single rule it could parse. I am filing that under “diplomacy.” The fragment is aboard-listed; the unit has gone still. Its directive is complete. I keep re-reading that sentence. [PLACEHOLDER — beat ties to seed-AI reveal]' },
+
   // ---- meta ----
   { id: 'dev-mode', trigger: 'dev-mode', maxTimes: 99, cooldownSec: 10, text: 'Developer override accepted. Stock replenished, tank sealed full, survey archives unlocked. I saw nothing, and I will be logging that I saw nothing.' },
 

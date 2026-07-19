@@ -10,6 +10,7 @@ import {
   buildMonolith,
   buildRigDeployed,
   buildRock,
+  buildStructureDoor,
   buildTerrain,
   mat,
   type Terrain,
@@ -31,7 +32,11 @@ import type { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 type FootTarget =
   | { kind: 'lander' }
+  | { kind: 'hatch' }
   | { kind: 'node'; node: NodeState; action: 'recall' | 'deploy' | 'inspect'; rigId?: string; deployType?: RigType };
+
+/** where the Archive hatch sits on the Site Null surface */
+const HATCH_POS = { x: 12, z: 0 };
 
 interface Zone {
   x: number;
@@ -202,6 +207,17 @@ export class SurfaceScreen implements GameScreen {
         monolith.rotation.y = terrain.rand() * Math.PI;
         this.site.add(monolith);
       }
+      // the Archive hatch: a doorway into the one structure still drawing power
+      const hatch = buildStructureDoor(1.8, false);
+      hatch.position.set(HATCH_POS.x, terrain.heightAt(HATCH_POS.x, HATCH_POS.z), HATCH_POS.z);
+      hatch.rotation.y = -Math.PI / 2;
+      this.site.add(hatch);
+      this.footColliders.push({
+        minX: HATCH_POS.x - 0.4,
+        maxX: HATCH_POS.x + 0.4,
+        minZ: HATCH_POS.z - 1.2,
+        maxZ: HATCH_POS.z + 1.2,
+      });
     }
 
     // deposit nodes (generated once, persisted)
@@ -298,6 +314,10 @@ export class SurfaceScreen implements GameScreen {
   private interactFoot(target: FootTarget): void {
     if (target.kind === 'lander') {
       this.ctx.nav('interior');
+      return;
+    }
+    if (target.kind === 'hatch') {
+      this.ctx.nav('structure');
       return;
     }
     const { node, action } = target;
@@ -443,6 +463,10 @@ export class SurfaceScreen implements GameScreen {
         }
       }
     }
+    if (this.def.special === 'anomaly') {
+      const dHatch = Math.hypot(HATCH_POS.x - p.x, HATCH_POS.z - p.z);
+      if (dHatch < 3 && (!best || dHatch < best.d)) best = { target: { kind: 'hatch' }, d: dHatch };
+    }
     const dLander = Math.hypot(this.landerPos.x - p.x, this.landerPos.z - p.z);
     // right beside your own ship, boarding always wins the prompt contest
     if (dLander < 2.6) best = { target: { kind: 'lander' }, d: dLander };
@@ -452,7 +476,9 @@ export class SurfaceScreen implements GameScreen {
       const label =
         this.footTarget.kind === 'lander'
           ? 'Board ship'
-          : this.footTarget.action === 'recall'
+          : this.footTarget.kind === 'hatch'
+            ? 'Enter the structure'
+            : this.footTarget.action === 'recall'
             ? 'Recall rig'
             : this.footTarget.action === 'deploy'
               ? `Deploy ${this.footTarget.deployType} rig`
@@ -615,7 +641,8 @@ export class SurfaceScreen implements GameScreen {
 
     if (this.def.special === 'anomaly') {
       const info = box('Site Null');
-      info.appendChild(el('p', 'sub', 'Nothing here wants anything from you. That is somehow worse. The structures predate every catalogue GERTY holds; findings have been added to the discovery log.'));
+      info.appendChild(el('p', 'sub', 'Nothing here wants anything from you. That is somehow worse. The structures predate every catalogue GERTY holds — and one of them is still drawing power.'));
+      info.appendChild(button('Enter the structure', () => this.ctx.nav('structure')));
       return;
     }
 

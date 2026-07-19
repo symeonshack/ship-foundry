@@ -46,6 +46,13 @@ A known-good driver exists in past session scratchpads (`drive.mjs`); recreate f
 - E-interaction targets the NEAREST candidate (nodes within 3, lander within 3.4; lander hard-wins under 2.6) — scripts must not assume the aimed-at node is the acted-on node.
 - Shared-state checks: deploy by click in command → Tab → same rig in `sc.rigs`; cargo grows while walking; panel works in both modes.
 
+## The Archive (Phase 4)
+
+- Enter via Site Null surface panel button or the on-foot hatch at (12,0). Screen id `structure`; same FP controller (flat floor). Interior has doorways — straight-line walkTo corner-traps between wall segments; route via doorway waypoints: power-room opening (5,-8.8)↔(5,-6.2), main door (-4,-6.8)↔(-4,-9.4).
+- Read prompts only when `.interact-prompt` isVisible — hidden divs keep stale text.
+- Internals on `manager.active`: `.custodian` ({mode: patrol|alert|attend|dormant, x, z}), `.mainSealed`, `.cycleActive`. Standing in the archive room within vision 5.5 → alert → seal/alarm/herd/shove (player teleported to (-4,-6), zero loss). Console starts the preservation cycle → attend (the outsmart). Taking the fragment → dormant forever.
+- Items live in `state.items`; structure persistence in `state.structure`.
+
 ## Gotchas
 
 - GERTY lines queue with cooldowns; ambient lines can lag their trigger by several seconds — assert on state/log, not on which line is currently showing.

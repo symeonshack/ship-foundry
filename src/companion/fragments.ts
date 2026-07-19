@@ -54,6 +54,27 @@ export const FRAGMENTS: Record<string, FragmentDef> = {
     source: 'The Relay',
     topicId: 'collaborator',
   },
+  'archive-log-1': {
+    key: 'archive-log-1',
+    title: 'Etched Plate: Assignment',
+    body: 'Machine-precise glyphs, worn shallow. GERTY’s best rendering: “UNIT 9: PRESERVE THE ARCHIVE. NOTHING LEAVES.” No punctuation for mercy. No expiry condition. Whatever wrote this order never imagined needing one.',
+    source: 'Site Null — the Archive, entry hall',
+    topicId: 'site-null',
+  },
+  'archive-log-2': {
+    key: 'archive-log-2',
+    title: 'Etched Plate: Inventory',
+    body: 'A manifest of the archive’s contents, in units of time rather than mass — as if what is stored here is measured in the years it took to make. The final line is newer than the rest. [PLACEHOLDER — inventory hints tie into the seed-AI backstory]',
+    source: 'Site Null — the Archive, junction',
+    topicId: 'site-null',
+  },
+  'archive-fragment': {
+    key: 'archive-fragment',
+    title: 'The Archive Fragment',
+    body: 'A lattice of stored state, dense past reading. GERTY can parse the header only: an origin timestamp that predates the colony calendar by a span it double-checked four times before showing you. [PLACEHOLDER — the major seed-AI evidence beat; ties to ending hooks]',
+    source: 'Site Null — the Archive, inner chamber',
+    topicId: 'site-null',
+  },
   'gerty-decline-mission': {
     key: 'gerty-decline-mission',
     title: 'GERTY Declined: the mission',

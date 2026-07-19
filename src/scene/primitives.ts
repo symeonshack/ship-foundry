@@ -362,6 +362,91 @@ export function buildCollaborator(): THREE.Group {
   return g;
 }
 
+// ---- the Custodian (obstructive agent — heavy, slow, amber; contrast to the collaborator) ----
+
+export function buildCustodian(): THREE.Group {
+  const g = new THREE.Group();
+  const shell = mat(0x4a4238, { flat: true, rough: 0.6, metal: 0.5 });
+  const trimMat = mat(0x2c2620, { rough: 0.7 });
+  // broad, planted torso — built to stand in doorways
+  g.add(at(box(1.25, 1.3, 0.9, shell), 0, 1.05, 0));
+  g.add(at(box(1.45, 0.35, 1.05, trimMat), 0, 0.45, 0));
+  g.add(at(cyl(0.55, 0.65, 0.35, trimMat, 8), 0, 0.18, 0));
+  // shoulder plates
+  g.add(at(box(0.35, 0.8, 0.95, trimMat), -0.85, 1.15, 0));
+  g.add(at(box(0.35, 0.8, 0.95, trimMat), 0.85, 1.15, 0));
+  // low dome head with a single amber eye
+  g.add(at(sph(0.42, shell, 10), 0, 1.95, 0));
+  const eye = sph(0.11, mat(0xffffff, { emissive: 0xffb454, emissiveIntensity: 1.2 }));
+  eye.name = 'eye';
+  eye.position.set(0, 1.98, 0.4);
+  g.add(eye);
+  // chest strip — pulses with its mood
+  const strip = at(box(0.7, 0.12, 0.06, mat(0x201a12, { emissive: 0xffb454, emissiveIntensity: 0.5 })), 0, 1.25, 0.48);
+  strip.name = 'strip';
+  g.add(strip);
+  return g;
+}
+
+// ---- Archive structure props ----
+
+export function buildStructureDoor(w: number, sealed: boolean): THREE.Group {
+  const g = new THREE.Group();
+  const door = at(box(w, 2.6, 0.25, mat(0x3a4750, { metal: 0.5, rough: 0.5 })), 0, 1.3, 0);
+  door.name = 'door-panel';
+  g.add(door);
+  const lamp = at(box(w * 0.8, 0.12, 0.3, mat(sealed ? 0xff5c5c : 0x7dffa8, { emissive: sealed ? 0xff5c5c : 0x7dffa8, emissiveIntensity: 0.7 })), 0, 2.75, 0);
+  lamp.name = 'door-lamp';
+  g.add(lamp);
+  return g;
+}
+
+export function buildStructureProp(kind: 'panel' | 'item' | 'log' | 'console' | 'pedestal' | 'bench', meta?: string): THREE.Group {
+  const g = new THREE.Group();
+  const dark = mat(0x1c2226, { rough: 0.5, metal: 0.6 });
+  const seam = mat(0x0e1a1e, { emissive: 0x2a6a5a, emissiveIntensity: 0.6 });
+  switch (kind) {
+    case 'panel':
+      g.add(at(box(0.15, 1.0, 1.2, dark), 0, 1.3, 0));
+      g.add(at(box(0.18, 0.08, 1.0, seam), 0, 1.75, 0));
+      break;
+    case 'item': {
+      g.add(at(cyl(0.4, 0.45, 0.5, dark, 8), 0, 0.25, 0));
+      const item =
+        meta === 'powerCell'
+          ? at(cyl(0.14, 0.14, 0.4, mat(0xffb454, { emissive: 0xffb454, emissiveIntensity: 0.7 })), 0, 0.72, 0)
+          : at(box(0.5, 0.16, 0.28, mat(0x8a949c, { metal: 0.6, rough: 0.4 })), 0, 0.6, 0);
+      item.name = 'item-mesh';
+      g.add(item);
+      break;
+    }
+    case 'log':
+      g.add(at(box(0.12, 0.9, 1.4, mat(0x11181c, { rough: 0.35, metal: 0.7 })), 0, 1.5, 0));
+      g.add(at(box(0.15, 0.6, 1.1, seam), 0, 1.5, 0));
+      break;
+    case 'console':
+      g.add(at(box(1.4, 0.9, 0.6, dark), 0, 0.45, 0));
+      g.add(at(box(1.2, 0.5, 0.1, mat(0x0c2a26, { emissive: 0x2a6a5a, emissiveIntensity: 0.8 })), 0, 1.15, 0.15));
+      g.add(at(cyl(0.06, 0.06, 0.5, dark), -0.5, 1.0, 0.1));
+      break;
+    case 'pedestal': {
+      g.add(at(cyl(0.5, 0.65, 1.1, dark, 8), 0, 0.55, 0));
+      const fragment = new THREE.Mesh(new THREE.OctahedronGeometry(0.28), mat(0x7dffa8, { emissive: 0x7dffa8, emissiveIntensity: 1.0, flat: true }));
+      fragment.name = 'fragment';
+      fragment.position.y = 1.5;
+      g.add(fragment);
+      break;
+    }
+    case 'bench':
+      g.add(at(box(1.6, 0.12, 0.8, mat(0x39454d, { metal: 0.4 })), 0, 0.95, 0));
+      g.add(at(box(0.14, 0.95, 0.7, dark), -0.65, 0.47, 0));
+      g.add(at(box(0.14, 0.95, 0.7, dark), 0.65, 0.47, 0));
+      g.add(at(box(0.3, 0.1, 0.2, mat(0x59d6ff, { emissive: 0x59d6ff, emissiveIntensity: 0.4 })), 0.4, 1.05, 0.15));
+      break;
+  }
+  return g;
+}
+
 // ---- encounter structure pieces ----
 
 export function buildEncounterModule(type: EncounterModuleType): THREE.Group {

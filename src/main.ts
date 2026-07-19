@@ -15,6 +15,8 @@ import { SurfaceScreen } from './mining/surfaceScene';
 import { EncounterScreen } from './encounter/encounterScene';
 import { InteriorScreen } from './interior/interiorScene';
 import { FlightScreen } from './flight/flightScene';
+import { StructureScreen } from './structure/structureScene';
+import type { StructureState } from './core/state';
 import { Hud } from './ui/hud';
 import type { Ctx } from './core/ctx';
 
@@ -62,6 +64,7 @@ manager.register(starMapScreen);
 manager.register(new SurfaceScreen(ctx, canvas));
 manager.register(new EncounterScreen(ctx, canvas));
 manager.register(flightScreen);
+manager.register(new StructureScreen(ctx, canvas));
 
 new Hud(ctx);
 
@@ -82,6 +85,13 @@ bus.on('encounter:solved', () => pushCheckpoint(store.state, 'The Relay — stru
 // you always come to aboard your own ship
 manager.show('interior');
 manager.start();
+
+// normalize saves from before Phase 4's fields existed
+{
+  const raw = store.state as { items?: string[]; structure?: StructureState };
+  if (!raw.items) raw.items = [];
+  if (!raw.structure) raw.structure = { panelOpened: false, maintOpen: false, fragmentTaken: false, logsRead: [] };
+}
 
 // retro-apply the starting fuel reserve to saves created before it existed
 const FUEL_RESERVE_MIGRATION = 'migration.fuelReserve';

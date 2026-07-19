@@ -110,7 +110,7 @@ export const POIS: Record<string, PoiDef> = {
     composition: {},
     hazard: { type: null, intensity: 0 },
     blurb: 'Structures. Regular geometry. No registered installation within forty light-years.',
-    detail: 'Dormant. Old — the erosion says very old. Nothing here matches any human catalogue GERTY will admit to having.',
+    detail: 'Dormant. Old — the erosion says very old. Nothing here matches any human catalogue GERTY will admit to having. One structure still draws power: a custodial process, active, literal-minded. Assume its orders are older than you and that it follows them exactly.',
     special: 'anomaly',
     terrainSeed: 113,
     terrainColor: 0x3d4a44,

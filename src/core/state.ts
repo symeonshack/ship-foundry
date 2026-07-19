@@ -66,6 +66,14 @@ export interface EncounterState {
   modules: EncounterModule[];
 }
 
+/** the Archive at Site Null (Phase 4) */
+export interface StructureState {
+  panelOpened: boolean;
+  maintOpen: boolean;
+  fragmentTaken: boolean;
+  logsRead: string[];
+}
+
 export interface GameState {
   version: 1;
   createdAt: number;
@@ -83,6 +91,9 @@ export interface GameState {
   log: LogEntry[];
   gertySeen: Record<string, { count: number; lastAt: number }>;
   encounter: EncounterState;
+  /** carried tools/components (Phase 4) */
+  items: string[];
+  structure: StructureState;
 }
 
 export function createNewGame(): GameState {
@@ -115,6 +126,8 @@ export function createNewGame(): GameState {
     log: [],
     gertySeen: {},
     encounter: { started: false, solved: false, turnCount: 0, modules: [] },
+    items: [],
+    structure: { panelOpened: false, maintOpen: false, fragmentTaken: false, logsRead: [] },
   };
 }
 

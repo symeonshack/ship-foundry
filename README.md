@@ -21,6 +21,7 @@ npm test         # unit tests (stats, refinery, GERTY, encounter logic)
 - **Refinery** (at the Foundry): raw stock in, usable stock out, in real time.
 - **GERTY** flags hazards beyond your equipment ratings and occasionally declines to answer. The logbook (LOG) collects discoveries; some entries can be raised with GERTY directly.
 - Far out, something is building. It doesn't speak. Bring parts.
+- And at Site Null, one structure still draws power. Inside: readable plates, found components, a workbench — and a resident with a very old, very literal job description. It cannot hurt you, and you cannot fight it; you can only understand it. Read what it protects, and think about what its orders actually say.
 
 **Dev mode:** type `c` `h` `t` quickly (within ~1.2s) to toggle. Bottomless stock and tank, every site pre-surveyed — for exploring/debugging. A pulsing DEV badge marks it; toggling off restores an honest tank but granted stock remains, so use a throwaway save or a checkpoint.
 

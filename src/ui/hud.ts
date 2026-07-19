@@ -4,6 +4,7 @@ import { deriveStats } from '../building/shipStats';
 import { poiDef } from '../exploration/starSystem';
 import { listCheckpoints, restoreCheckpoint, wipeAll } from '../save/persistence';
 import { FLAGS } from '../core/flags';
+import { ITEM_NAMES } from '../structure/layout';
 import { el } from './panels';
 import type { SpokenLine } from '../companion/gerty';
 import type { ScreenId } from '../core/events';
@@ -24,6 +25,7 @@ const SCREEN_HINTS: Record<ScreenId, string> = {
   starmap: 'STAR MAP — click a contact to survey it. The outer ring is your point of no return; the inner ring gets you home again.',
   surface: 'SURFACE OPS — arm a rig, click a deposit to deploy. TAB drops you on foot at the same live site: walk, inspect, E to interact. Hazards tick while you stay, in either view.',
   encounter: 'THE RELAY — no shared language. Place a module; watch what it keeps, what it removes, what it points at.',
+  structure: 'THE ARCHIVE — WASD/mouse, E to interact. Read the plates. The resident is not hostile; it is thorough. Its rules can be satisfied to the letter.',
 };
 
 export class Hud {
@@ -170,6 +172,13 @@ export class Hud {
       const dot = el('span', 'dot');
       dot.style.background = `#${RESOURCES[id as RawResourceId].color.toString(16).padStart(6, '0')}`;
       chip.append(dot, el('span', 'name', `hold: ${RESOURCES[id as RawResourceId].name}`), el('span', 'amt', String(Math.floor(n))));
+      this.cargoChips.appendChild(chip);
+    }
+    for (const item of s.items ?? []) {
+      const chip = el('span', 'chip raw');
+      const dot = el('span', 'dot');
+      dot.style.background = '#59d6ff';
+      chip.append(dot, el('span', 'name', `tool: ${ITEM_NAMES[item] ?? item}`));
       this.cargoChips.appendChild(chip);
     }
 
