@@ -7,14 +7,18 @@ import {
   addStars,
   buildDepositNode,
   buildLander,
+  buildLandmark,
   buildMonolith,
   buildRigDeployed,
   buildRock,
   buildStructureDoor,
-  buildTerrain,
   mat,
-  type Terrain,
+  mulberry32,
 } from '../scene/primitives';
+import { ChunkedTerrain } from '../terrain/chunkManager';
+import { BALANCE } from '../config/balance';
+import { nodeCountFor, rollCollapse, rollYield } from './nodeLayout';
+import { buildSiteLayout, clusterForNode, jitterInCluster, type SiteLayout, type LandmarkKind } from './siteLayout';
 import { poiDef, type PoiDef } from '../exploration/starSystem';
 import { deriveStats, travelCost, type ShipStats } from '../building/shipStats';
 import { distanceBetween } from '../exploration/starSystem';
@@ -25,7 +29,7 @@ import { RESOURCES, type RawResourceId } from '../core/resources';
 import { FLAGS } from '../core/flags';
 import type { NodeState } from '../core/state';
 import { rigTypeFor } from './rigs';
-import { PlayerController, type Collider } from '../interior/playerController';
+import { PLAYER_RADIUS, PlayerController, type Collider } from '../interior/playerController';
 import { bar, box, button, clearPanel, el, hazardTag } from '../ui/panels';
 import { toast } from '../ui/hud';
 import type { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -37,6 +41,17 @@ type FootTarget =
 
 /** where the Archive hatch sits on the Site Null surface */
 const HATCH_POS = { x: 12, z: 0 };
+
+/** bump when deposit layout rules change — older saves get positions re-spread */
+const LAYOUT_V = 2;
+
+/** walk-blocking footprint half-extent per landmark kind (crater rim is walkable) */
+const LANDMARK_FOOTPRINT: Record<LandmarkKind, number> = {
+  spires: 2.4,
+  crater: 0,
+  wreck: 2.2,
+  vent: 1.5,
+};
 
 interface Zone {
   x: number;
@@ -53,7 +68,9 @@ export class SurfaceScreen implements GameScreen {
   private raycaster = new THREE.Raycaster();
 
   private site = new THREE.Group();
-  private terrain: Terrain | null = null;
+  private terrain: ChunkedTerrain | null = null;
+  private rand: () => number = Math.random;
+  private layout: SiteLayout | null = null;
   private nodeMeshes = new Map<string, THREE.Group>();
   private rigMeshes = new Map<string, THREE.Group>();
   private rigs: ActiveRig[] = [];
@@ -87,15 +104,18 @@ export class SurfaceScreen implements GameScreen {
   };
 
   constructor(private ctx: Ctx, canvas: HTMLCanvasElement) {
+    const cam = BALANCE.surface.camera;
     this.camera = makeCamera(50);
     this.camera.position.set(20, 24, 20);
     this.controls = makeOrbit(this.camera, canvas, {
       target: [0, 0, 0],
-      minDistance: 8,
-      maxDistance: 70,
-      maxPolar: Math.PI * 0.46,
+      minDistance: cam.minDistance,
+      maxDistance: cam.maxDistance,
+      maxPolar: Math.PI * cam.maxPolarFrac,
       enablePan: true,
     });
+    // pan across the site, not across the screen plane
+    this.controls.screenSpacePanning = false;
     addBasicLights(this.scene);
     addStars(this.scene);
     this.scene.add(this.site);
@@ -114,6 +134,11 @@ export class SurfaceScreen implements GameScreen {
     this.mode = 'command';
     this.controls.enabled = true;
     this.wasInZone = false;
+    // sites are big now — always come back to the landing area, not wherever
+    // the camera was left last visit
+    this.camera.position.set(20, 24, 20);
+    this.controls.target.set(0, 0, 0);
+    this.controls.update();
     this.buildSite();
     this.controller.position.set(this.landerPos.x + 3, 0, this.landerPos.z + 3);
     this.controller.yaw = Math.PI * 0.75; // facing back toward the lander/site
@@ -149,6 +174,8 @@ export class SurfaceScreen implements GameScreen {
       if (m.material) (Array.isArray(m.material) ? m.material : [m.material]).forEach((x) => x.dispose());
     });
     this.site.clear();
+    this.terrain?.dispose();
+    this.terrain = null;
     this.nodeMeshes.clear();
     this.rigMeshes.clear();
     this.zones = [];
@@ -158,15 +185,22 @@ export class SurfaceScreen implements GameScreen {
   private buildSite(): void {
     this.disposeSite();
     this.scene.background = new THREE.Color(this.def.skyColor);
+    // fog hides the chunk-streaming horizon (cold sites override, denser, below)
+    this.scene.fog = new THREE.Fog(this.def.skyColor, BALANCE.surface.fogNear, BALANCE.surface.fogFar);
 
-    const terrain = buildTerrain(this.def.terrainSeed, this.def.terrainColor);
+    const terrain = new ChunkedTerrain(this.def.terrainSeed, this.def.terrainColor);
     this.terrain = terrain;
-    this.site.add(terrain.mesh);
+    this.scene.add(terrain.group);
+    terrain.prewarm(0, 0);
+    const rand = mulberry32(this.def.terrainSeed);
+    this.rand = rand;
+    const layout = buildSiteLayout(this.def.terrainSeed, this.def.composition);
+    this.layout = layout;
 
     // on-foot collision: site bounds first, then props as they're placed
     this.footColliders.length = 0;
     this.rigColliders.clear();
-    const half = terrain.size / 2 - 1;
+    const half = BALANCE.surface.siteHalfExtent;
     this.footColliders.push(
       { minX: -half - 4, maxX: -half, minZ: -half - 4, maxZ: half + 4 },
       { minX: half, maxX: half + 4, minZ: -half - 4, maxZ: half + 4 },
@@ -175,15 +209,13 @@ export class SurfaceScreen implements GameScreen {
     );
     this.controller.groundHeight = (x, z) => terrain.heightAt(x, z);
 
-    // scattered rocks, keeping the middle workable
-    for (let i = 0; i < 26; i++) {
-      const x = (terrain.rand() - 0.5) * terrain.size * 0.9;
-      const z = (terrain.rand() - 0.5) * terrain.size * 0.9;
+    // scattered rocks around the landing area, keeping the middle workable
+    const rocks = BALANCE.surface.rocks;
+    for (let i = 0; i < rocks.nearSpawn; i++) {
+      const x = (rand() - 0.5) * 2 * rocks.spawnSpread;
+      const z = (rand() - 0.5) * 2 * rocks.spawnSpread;
       if (Math.hypot(x, z) < 6) continue;
-      const rock = buildRock(terrain.rand);
-      rock.position.set(x, terrain.heightAt(x, z) + 0.1, z);
-      this.site.add(rock);
-      this.footColliders.push({ minX: x - 0.9, maxX: x + 0.9, minZ: z - 0.9, maxZ: z + 0.9 });
+      this.placeRock(x, z);
     }
 
     const lander = buildLander();
@@ -196,6 +228,17 @@ export class SurfaceScreen implements GameScreen {
       maxZ: this.landerPos.z + 1.5,
     });
 
+    // landmarks — regions worth finding, regenerated deterministically per visit
+    for (const lm of layout.landmarks) {
+      const g = buildLandmark(lm.kind, rand);
+      g.position.set(lm.x, terrain.heightAt(lm.x, lm.z), lm.z);
+      this.site.add(g);
+      const fp = LANDMARK_FOOTPRINT[lm.kind];
+      if (fp > 0) {
+        this.footColliders.push({ minX: lm.x - fp, maxX: lm.x + fp, minZ: lm.z - fp, maxZ: lm.z + fp });
+      }
+    }
+
     if (this.def.special === 'anomaly') {
       for (let i = 0; i < 9; i++) {
         const a = (i / 9) * Math.PI * 2;
@@ -204,7 +247,7 @@ export class SurfaceScreen implements GameScreen {
         const x = Math.cos(a) * r;
         const z = Math.sin(a) * r;
         monolith.position.set(x, terrain.heightAt(x, z), z);
-        monolith.rotation.y = terrain.rand() * Math.PI;
+        monolith.rotation.y = rand() * Math.PI;
         this.site.add(monolith);
       }
       // the Archive hatch: a doorway into the one structure still drawing power
@@ -223,24 +266,32 @@ export class SurfaceScreen implements GameScreen {
     // deposit nodes (generated once, persisted)
     const poi = this.ctx.store.poi(this.def.id);
     if (poi.nodes === null) {
-      poi.nodes = this.generateNodes(terrain);
+      poi.nodes = this.generateNodes(rand, layout);
+      poi.layoutV = LAYOUT_V;
     } else {
+      // saves from an older layout scheme: same deposits, re-gathered into
+      // this site's veins (positions only — ids and remaining yield stay)
+      if ((poi.layoutV ?? 1) < LAYOUT_V) {
+        this.regroupNodes(poi.nodes, layout, rand);
+        poi.layoutV = LAYOUT_V;
+        this.ctx.store.changed();
+      }
       // saves from before a composition change: add nodes for any resource
       // this site now offers that the stored set doesn't have
       const present = new Set(poi.nodes.map((n) => n.resource));
       for (const [res, richness] of Object.entries(this.def.composition)) {
         if (present.has(res as RawResourceId)) continue;
-        const count = Math.round(richness * 4) + 1;
-        for (let i = 0; i < count; i++) {
-          const a = terrain.rand() * Math.PI * 2;
-          const r = 7 + terrain.rand() * 19;
+        const centers = layout.clusters.filter((c) => c.resource === res);
+        for (let i = 0; i < nodeCountFor(richness); i++) {
+          const center = clusterForNode(centers, i);
+          const { dx, dz } = jitterInCluster(rand);
           poi.nodes.push({
             id: this.ctx.store.uid('n'),
             resource: res as RawResourceId,
-            remaining: Math.floor(8 + terrain.rand() * 8),
-            x: Math.cos(a) * r,
-            z: Math.sin(a) * r,
-            collapseIn: this.def.hazard.type === 'unstable' ? 18 + terrain.rand() * 12 : null,
+            remaining: rollYield(rand),
+            x: center.x + dx,
+            z: center.z + dz,
+            collapseIn: this.def.hazard.type === 'unstable' ? rollCollapse(rand) : null,
           });
         }
       }
@@ -253,19 +304,26 @@ export class SurfaceScreen implements GameScreen {
       this.site.add(g);
       this.nodeMeshes.set(node.id, g);
       this.footColliders.push({ minX: node.x - 0.55, maxX: node.x + 0.55, minZ: node.z - 0.55, maxZ: node.z + 0.55 });
+      // a little rock dressing so worked deposits read as geology, not markers
+      for (let i = 0; i < rocks.perNode; i++) {
+        const a = rand() * Math.PI * 2;
+        const r = 2 + rand() * (rocks.nodeScatter - 2);
+        this.placeRock(node.x + Math.cos(a) * r, node.z + Math.sin(a) * r);
+      }
     }
 
     // hazard dressing
     if (this.def.hazard.type === 'radiation') {
+      const zoneR = BALANCE.surface.radiationZoneRadius;
       const hot = (poi.nodes ?? []).filter((n) => n.resource === 'gas' || n.resource === 'ore').slice(0, 3);
       for (const n of hot) {
         const disc = new THREE.Mesh(
-          new THREE.CylinderGeometry(8, 8, 3.2, 28, 1, true),
+          new THREE.CylinderGeometry(zoneR, zoneR, 3.2, 28, 1, true),
           mat(0x7dffa8, { emissive: 0x4a9a5a, emissiveIntensity: 0.4, transparent: true, opacity: 0.1 }),
         );
         disc.position.set(n.x, terrain.heightAt(n.x, n.z) + 1.6, n.z);
         this.site.add(disc);
-        this.zones.push({ x: n.x, z: n.z, r: 8, mesh: disc });
+        this.zones.push({ x: n.x, z: n.z, r: zoneR, mesh: disc });
       }
     } else if (this.def.hazard.type === 'cold') {
       this.scene.fog = new THREE.Fog(0x9fc4d8, 25, 95);
@@ -273,24 +331,46 @@ export class SurfaceScreen implements GameScreen {
     }
   }
 
-  private generateNodes(terrain: Terrain): NodeState[] {
+  private placeRock(x: number, z: number): void {
+    const rock = buildRock(this.rand);
+    rock.position.set(x, this.terrain!.heightAt(x, z) + 0.1, z);
+    this.site.add(rock);
+    this.footColliders.push({ minX: x - 0.9, maxX: x + 0.9, minZ: z - 0.9, maxZ: z + 0.9 });
+  }
+
+  private generateNodes(rand: () => number, layout: SiteLayout): NodeState[] {
     const nodes: NodeState[] = [];
     for (const [res, richness] of Object.entries(this.def.composition)) {
-      const count = Math.round(richness * 4) + 1;
-      for (let i = 0; i < count; i++) {
-        const a = terrain.rand() * Math.PI * 2;
-        const r = 7 + terrain.rand() * 19;
+      const centers = layout.clusters.filter((c) => c.resource === res);
+      for (let i = 0; i < nodeCountFor(richness); i++) {
+        const center = clusterForNode(centers, i);
+        const { dx, dz } = jitterInCluster(rand);
         nodes.push({
           id: this.ctx.store.uid('n'),
           resource: res as RawResourceId,
-          remaining: Math.floor(8 + terrain.rand() * 8),
-          x: Math.cos(a) * r,
-          z: Math.sin(a) * r,
-          collapseIn: this.def.hazard.type === 'unstable' ? 18 + terrain.rand() * 12 : null,
+          remaining: rollYield(rand),
+          x: center.x + dx,
+          z: center.z + dz,
+          collapseIn: this.def.hazard.type === 'unstable' ? rollCollapse(rand) : null,
         });
       }
     }
     return nodes;
+  }
+
+  /** move persisted deposits into this site's veins, keeping ids and remaining yield */
+  private regroupNodes(nodes: NodeState[], layout: SiteLayout, rand: () => number): void {
+    const indexByResource = new Map<RawResourceId, number>();
+    for (const node of nodes) {
+      const centers = layout.clusters.filter((c) => c.resource === node.resource);
+      if (centers.length === 0) continue;
+      const i = indexByResource.get(node.resource) ?? 0;
+      indexByResource.set(node.resource, i + 1);
+      const center = clusterForNode(centers, i);
+      const { dx, dz } = jitterInCluster(rand);
+      node.x = center.x + dx;
+      node.z = center.z + dz;
+    }
   }
 
   // ---- mode switching (the Phase 3 core: camera/control swap, same live scene) ----
@@ -299,16 +379,46 @@ export class SurfaceScreen implements GameScreen {
     if (mode === this.mode) return;
     this.mode = mode;
     if (mode === 'foot') {
+      // drop in where the command camera is looking — on a site this size,
+      // walking out from the lander every time would make foot mode useless
+      const half = BALANCE.surface.siteHalfExtent - 2;
+      const spot = this.freeSpotNear(
+        THREE.MathUtils.clamp(this.controls.target.x, -half, half),
+        THREE.MathUtils.clamp(this.controls.target.z, -half, half),
+      );
+      this.controller.position.set(spot.x, 0, spot.z);
       this.controls.enabled = false;
       this.controller.attach();
       toast('On foot — Tab returns to command view', 'info');
     } else {
       this.controller.detach();
+      const p = this.controller.position;
+      this.controls.target.set(p.x, 0, p.z);
+      this.camera.position.set(p.x + 20, 24, p.z + 20);
       this.controls.enabled = true;
+      this.controls.update();
       this.prompt.style.display = 'none';
       this.footTarget = null;
     }
     this.renderPanel();
+  }
+
+  /** nearest spot not inside a collider — so a foot-drop can't spawn stuck in a rock */
+  private freeSpotNear(x: number, z: number): { x: number; z: number } {
+    const blocked = (px: number, pz: number): boolean =>
+      this.footColliders.some(
+        (c) => px + PLAYER_RADIUS > c.minX && px - PLAYER_RADIUS < c.maxX && pz + PLAYER_RADIUS > c.minZ && pz - PLAYER_RADIUS < c.maxZ,
+      );
+    if (!blocked(x, z)) return { x, z };
+    for (let r = 1; r <= 8; r++) {
+      for (let k = 0; k < 8; k++) {
+        const a = (k / 8) * Math.PI * 2;
+        const px = x + Math.cos(a) * r;
+        const pz = z + Math.sin(a) * r;
+        if (!blocked(px, pz)) return { x: px, z: pz };
+      }
+    }
+    return { x, z };
   }
 
   private interactFoot(target: FootTarget): void {
@@ -348,7 +458,7 @@ export class SurfaceScreen implements GameScreen {
     }
 
     if (!this.armedRig || !this.terrain) return;
-    const hit = this.raycaster.intersectObject(this.terrain.mesh, false)[0];
+    const hit = this.raycaster.intersectObjects(this.terrain.group.children, false)[0];
     if (!hit) return;
     const poi = this.ctx.store.poi(this.def.id);
     const nodes = poi.nodes ?? [];
@@ -438,6 +548,27 @@ export class SurfaceScreen implements GameScreen {
     this.ctx.store.changed();
   }
 
+  /** charting: coming within range of a vein or landmark logs it as discovered, once */
+  private checkDiscovery(x: number, z: number): void {
+    if (!this.layout) return;
+    const poi = this.ctx.store.poi(this.def.id);
+    const r = BALANCE.surface.discoverRadius;
+    const seen = new Set(poi.charted);
+    for (const c of this.layout.clusters) {
+      if (seen.has(c.id) || Math.hypot(c.x - x, c.z - z) > r) continue;
+      poi.charted.push(c.id);
+      const label = `${RESOURCES[c.resource].name} vein`;
+      this.ctx.bus.emit('site:discovery', { poiId: this.def.id, id: c.id, label });
+      toast(`Charted: ${label}`, 'good');
+    }
+    for (const lm of this.layout.landmarks) {
+      if (seen.has(lm.id) || Math.hypot(lm.x - x, lm.z - z) > r) continue;
+      poi.charted.push(lm.id);
+      this.ctx.bus.emit('site:discovery', { poiId: this.def.id, id: lm.id, label: lm.label });
+      toast(`Charted: ${lm.label}`, 'good');
+    }
+  }
+
   // ---- per-frame simulation: extraction, hazards, collapse ----
 
   private updateFoot(dt: number): void {
@@ -502,8 +633,20 @@ export class SurfaceScreen implements GameScreen {
   update(dt: number): void {
     this.t += dt;
     this.excursion += dt;
-    if (this.mode === 'command') this.controls.update();
-    else this.updateFoot(dt);
+    if (this.mode === 'command') {
+      this.controls.update();
+      // keep the pan target on the site, and stream terrain around it
+      const half = BALANCE.surface.siteHalfExtent;
+      const t = this.controls.target;
+      t.x = THREE.MathUtils.clamp(t.x, -half, half);
+      t.z = THREE.MathUtils.clamp(t.z, -half, half);
+      this.terrain?.update(t.x, t.z);
+      this.checkDiscovery(t.x, t.z);
+    } else {
+      this.updateFoot(dt);
+      this.terrain?.update(this.controller.position.x, this.controller.position.z);
+      this.checkDiscovery(this.controller.position.x, this.controller.position.z);
+    }
     const store = this.ctx.store;
     const poi = store.poi(this.def.id);
     const nodes = poi.nodes ?? [];
@@ -603,7 +746,9 @@ export class SurfaceScreen implements GameScreen {
       Object.entries(store.state.cargo)
         .filter(([, n]) => n > 0)
         .map(([k]) => k)
-        .join(',');
+        .join(',') +
+      '~' +
+      poi.charted.length;
     if (sig !== this.panelSig) {
       this.panelSig = sig;
       this.renderPanel();
@@ -638,6 +783,19 @@ export class SurfaceScreen implements GameScreen {
       site.appendChild(el('div', 'sub', 'WASD walk · mouse/arrows look · E interact. Same site, same clocks — nothing paused because you got out.'));
     }
     site.appendChild(button('Board ship', () => this.ctx.nav('interior')));
+
+    if (this.layout && (this.layout.clusters.length > 0 || this.layout.landmarks.length > 0)) {
+      const total = this.layout.clusters.length + this.layout.landmarks.length;
+      const charted = box(`Charted ${poi.charted.length}/${total}`);
+      const chartedSet = new Set(poi.charted);
+      for (const lm of this.layout.landmarks) {
+        charted.appendChild(el('div', 'sub', chartedSet.has(lm.id) ? lm.label : '? uncharted'));
+      }
+      const veinsKnown = this.layout.clusters.filter((c) => chartedSet.has(c.id)).length;
+      if (this.layout.clusters.length > 0) {
+        charted.appendChild(el('div', 'sub', `${veinsKnown}/${this.layout.clusters.length} veins located`));
+      }
+    }
 
     if (this.def.special === 'anomaly') {
       const info = box('Site Null');

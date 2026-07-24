@@ -39,6 +39,10 @@ export interface PoiState {
   visited: boolean;
   /** deposit nodes, generated on first visit */
   nodes: NodeState[] | null;
+  /** deposit-layout schema version; older saves get node positions re-spread on next visit */
+  layoutV?: number;
+  /** charted site features — vein/landmark ids the player has discovered (Phase 3) */
+  charted: string[];
 }
 
 export interface LogEntry {
@@ -234,9 +238,10 @@ export class GameStore {
   poi(id: string): PoiState {
     let p = this.state.pois[id];
     if (!p) {
-      p = { scanTier: 0, visited: false, nodes: null };
+      p = { scanTier: 0, visited: false, nodes: null, charted: [] };
       this.state.pois[id] = p;
     }
+    if (!p.charted) p.charted = []; // saves from before Phase 3
     return p;
   }
 

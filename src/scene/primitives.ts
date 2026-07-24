@@ -10,6 +10,7 @@ import type { RigType } from '../building/partCatalog';
 import type { RawResourceId } from '../core/resources';
 import { RESOURCES } from '../core/resources';
 import type { EncounterModuleType } from '../core/state';
+import { makeHeightField } from '../terrain/heightfield';
 
 // ---- shared materials ----
 
@@ -328,6 +329,85 @@ export function buildMonolith(variant: number): THREE.Group {
     const arch = at(new THREE.Mesh(new THREE.TorusGeometry(2.2, 0.3, 6, 16, Math.PI), body), 0, 0.2, 0);
     g.add(arch);
     g.add(at(sph(0.2, seam), 0, 2.6, 0));
+  }
+  return g;
+}
+
+// ---- site landmarks (Phase 3: distinct regions worth finding) ----
+
+export type SiteLandmarkKind = 'spires' | 'crater' | 'wreck' | 'vent';
+
+export function buildLandmark(kind: SiteLandmarkKind, rand: () => number): THREE.Group {
+  const g = new THREE.Group();
+  const dark = mat(C.hullDark);
+  switch (kind) {
+    case 'spires': {
+      const rock = mat(0x4c463e, { flat: true, rough: 0.95, metal: 0.05 });
+      const n = 5 + Math.floor(rand() * 3);
+      for (let i = 0; i < n; i++) {
+        const a = rand() * Math.PI * 2;
+        const r = rand() * 4;
+        const h = 3 + rand() * 4.5;
+        const spire = new THREE.Mesh(new THREE.ConeGeometry(0.5 + rand() * 0.7, h, 5), rock);
+        spire.position.set(Math.cos(a) * r, h * 0.42, Math.sin(a) * r);
+        spire.rotation.set((rand() - 0.5) * 0.25, rand() * Math.PI, (rand() - 0.5) * 0.25);
+        g.add(spire);
+      }
+      break;
+    }
+    case 'crater': {
+      // raised rim of tumbled boulders around a scorched center
+      for (let i = 0; i < 11; i++) {
+        const a = (i / 11) * Math.PI * 2 + rand() * 0.3;
+        const r = 5 + rand() * 2;
+        const boulder = buildRock(rand);
+        boulder.scale.multiplyScalar(1.15);
+        boulder.position.set(Math.cos(a) * r, 0.15, Math.sin(a) * r);
+        g.add(boulder);
+      }
+      const scorch = new THREE.Mesh(
+        new THREE.CylinderGeometry(3.4, 3.8, 0.5, 18),
+        mat(0x1f1c18, { flat: true, rough: 1, metal: 0 }),
+      );
+      scorch.position.y = 0.05;
+      g.add(scorch);
+      break;
+    }
+    case 'wreck': {
+      // human-made debris, half-buried — a story hook without a story yet
+      const plate = at(box(3.2, 0.18, 1.8, mat(C.hull, { flat: true, rough: 0.7 })), -0.8, 0.5, 0);
+      plate.rotation.set(0.35, rand() * Math.PI, 0.5);
+      g.add(plate);
+      const drum = cyl(0.55, 0.55, 2.6, mat(0x4a545c, { flat: true }));
+      drum.rotation.set(Math.PI / 2 - 0.25, 0, rand());
+      drum.position.set(1.3, 0.45, 0.8);
+      g.add(drum);
+      g.add(at(box(0.8, 0.8, 0.8, mat(0x6d7a68, { flat: true })), 0.4, 0.35, -1.3));
+      g.add(at(cyl(0.05, 0.05, 1.8, dark), -1.7, 0.9, 1.1));
+      const beacon = at(sph(0.09, mat(C.amber, { emissive: C.amber, emissiveIntensity: 1 })), -1.7, 1.85, 1.1);
+      beacon.name = 'beacon';
+      g.add(beacon);
+      break;
+    }
+    case 'vent': {
+      const crust = mat(0x3a3f38, { flat: true, rough: 0.95 });
+      for (let i = 0; i < 5; i++) {
+        const a = rand() * Math.PI * 2;
+        const r = 0.6 + rand() * 1.6;
+        const lip = new THREE.Mesh(new THREE.ConeGeometry(0.5 + rand() * 0.4, 1.1 + rand() * 0.9, 6), crust);
+        lip.position.set(Math.cos(a) * r, 0.4, Math.sin(a) * r);
+        lip.rotation.set((rand() - 0.5) * 0.4, 0, (rand() - 0.5) * 0.4);
+        g.add(lip);
+      }
+      const glow = new THREE.Mesh(
+        new THREE.CylinderGeometry(1.1, 1.3, 0.35, 12),
+        mat(0x9adf9a, { emissive: 0x4a9a5a, emissiveIntensity: 0.8, transparent: true, opacity: 0.55 }),
+      );
+      glow.name = 'vent-glow';
+      glow.position.y = 0.2;
+      g.add(glow);
+      break;
+    }
   }
   return g;
 }
@@ -721,7 +801,7 @@ export function buildPoiMarker(kind: PoiKind, color: number): THREE.Group {
 
 // ---- terrain ----
 
-function mulberry32(seed: number): () => number {
+export function mulberry32(seed: number): () => number {
   let s = seed >>> 0;
   return () => {
     s |= 0;
@@ -732,27 +812,6 @@ function mulberry32(seed: number): () => number {
   };
 }
 
-function hash2(ix: number, iz: number, seed: number): number {
-  const h = Math.sin(ix * 127.1 + iz * 311.7 + seed * 74.7) * 43758.5453;
-  return h - Math.floor(h);
-}
-
-function smooth(t: number): number {
-  return t * t * (3 - 2 * t);
-}
-
-function valueNoise(x: number, z: number, seed: number): number {
-  const ix = Math.floor(x);
-  const iz = Math.floor(z);
-  const fx = smooth(x - ix);
-  const fz = smooth(z - iz);
-  const a = hash2(ix, iz, seed);
-  const b = hash2(ix + 1, iz, seed);
-  const c = hash2(ix, iz + 1, seed);
-  const d = hash2(ix + 1, iz + 1, seed);
-  return a + (b - a) * fx + (c - a) * fz + (a - b - c + d) * fx * fz;
-}
-
 export interface Terrain {
   mesh: THREE.Mesh;
   heightAt(x: number, z: number): number;
@@ -761,10 +820,7 @@ export interface Terrain {
 }
 
 export function buildTerrain(seed: number, color: number, size = 70): Terrain {
-  const heightAt = (x: number, z: number): number =>
-    2.0 * valueNoise(x * 0.045 + 50, z * 0.045 + 50, seed) +
-    0.55 * valueNoise(x * 0.18 + 9, z * 0.18 + 9, seed * 1.7) -
-    1.4;
+  const heightAt = makeHeightField(seed);
 
   const geo = new THREE.PlaneGeometry(size, size, 56, 56);
   geo.rotateX(-Math.PI / 2);
@@ -802,5 +858,6 @@ export function addStars(scene: THREE.Scene, count = 500, radius = 400): void {
     positions[i * 3 + 2] = radius * Math.sin(phi) * Math.sin(theta);
   }
   geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  scene.add(new THREE.Points(geo, new THREE.PointsMaterial({ color: 0x9fb6c4, size: 1.1, sizeAttenuation: false })));
+  // fog: false — stars are backdrop, not scenery; site fog must never erase the sky
+  scene.add(new THREE.Points(geo, new THREE.PointsMaterial({ color: 0x9fb6c4, size: 1.1, sizeAttenuation: false, fog: false })));
 }

@@ -16,6 +16,7 @@ import { EncounterScreen } from './encounter/encounterScene';
 import { InteriorScreen } from './interior/interiorScene';
 import { FlightScreen } from './flight/flightScene';
 import { StructureScreen } from './structure/structureScene';
+import { TerrainTestScreen } from './terrain/terrainTestScreen';
 import type { StructureState } from './core/state';
 import { Hud } from './ui/hud';
 import type { Ctx } from './core/ctx';
@@ -65,6 +66,7 @@ manager.register(new SurfaceScreen(ctx, canvas));
 manager.register(new EncounterScreen(ctx, canvas));
 manager.register(flightScreen);
 manager.register(new StructureScreen(ctx, canvas));
+manager.register(new TerrainTestScreen(ctx, canvas));
 
 new Hud(ctx);
 
@@ -82,8 +84,9 @@ bus.on('travel:arrive', ({ poiId }) => {
 });
 bus.on('encounter:solved', () => pushCheckpoint(store.state, 'The Relay — structure active', true));
 
-// you always come to aboard your own ship
-manager.show('interior');
+// you always come to aboard your own ship — unless the dev terrain range
+// was asked for explicitly (#terrain: the chunk-streaming proof of concept)
+manager.show(window.location.hash === '#terrain' ? 'terraintest' : 'interior');
 manager.start();
 
 // normalize saves from before Phase 4's fields existed

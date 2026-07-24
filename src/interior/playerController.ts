@@ -4,7 +4,7 @@ export const EYE_HEIGHT = 1.6;
 const SPEED = 3.5;
 const LOOK_SPEED = 0.0023;
 const ARROW_LOOK_SPEED = 1.9;
-const PLAYER_RADIUS = 0.35;
+export const PLAYER_RADIUS = 0.35;
 const PITCH_LIMIT = Math.PI / 2 - 0.05;
 
 /** axis-aligned collider on the deck plane (y ignored — flat floor, no jumping) */

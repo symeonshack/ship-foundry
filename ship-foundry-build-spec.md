@@ -194,6 +194,7 @@ Given the scope (3D ship building, exploration, procedural resource sites, a dia
   ```
 - **Persistence:** browser `localStorage`/IndexedDB — fine here since this runs as a standalone webpage, not inside a sandboxed artifact.
 - **Version control:** a git repo from day one, given the size.
+- **Tuning & balance configuration.** Every gameplay-affecting numeric value (rates, costs, capacities, timers, thresholds — mining rig extraction speed, generator output, power costs, hazard timers, everything like that) must live in a single, well-organized, clearly named config file (e.g. `src/config/balance.ts`), grouped by system, not hardcoded inline in game logic. This applies to every phase, in every spec, from here forward. The goal: a future tuning request ("increase mining rig speed 20%") should be a one-line change in that config file, not a code-archaeology exercise through gameplay logic.
 - **Running it:** `npm install`, then `npm run dev` for a live-reloading local dev server; `npm run build` later produces a static site that can be opened locally or hosted anywhere (GitHub Pages, itch.io) if it's ever shared.
 
 ## Assets

@@ -5,7 +5,7 @@ import type { HazardType } from '../exploration/starSystem';
 import type { SpokenLine } from '../companion/gerty';
 import type { Gesture } from '../encounter/collaborator';
 
-export type ScreenId = 'interior' | 'starmap' | 'shipyard' | 'surface' | 'encounter' | 'flight' | 'structure';
+export type ScreenId = 'interior' | 'starmap' | 'shipyard' | 'surface' | 'encounter' | 'flight' | 'structure' | 'terraintest';
 
 export interface GameEvents {
   'screen:change': { screen: ScreenId };
@@ -22,6 +22,7 @@ export interface GameEvents {
   'cargo:full': Record<string, never>;
   'cargo:unloaded': Record<string, never>;
   'node:collapsed': { poiId: string; nodeId: string };
+  'site:discovery': { poiId: string; id: string; label: string };
 
   'refine:complete': { recipeId: string; output: RefinedResourceId };
   'build:placed': { partId: PartId };
