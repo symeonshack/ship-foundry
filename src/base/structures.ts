@@ -63,6 +63,10 @@ export interface StructureInstance {
   status: 'building' | 'active' | 'destroyed';
   /** a paid repair is in progress (Phase 9); absent/false on old saves */
   repairing?: boolean;
+  /** solar arrays only (Phase 13): 0..1 dust coverage, derates output */
+  dustLevel?: number;
+  /** solar arrays only: a Clean action is in progress (array offline meanwhile) */
+  cleaning?: boolean;
 }
 
 export const STRUCTURES: Record<StructureId, StructureDef> = {

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { PARTS } from './partCatalog';
 import { buildPartMesh } from '../scene/primitives';
+import { loadShipAsset } from './shipAsset';
 import type { PartPlacement } from '../core/state';
 import type { ShipStats } from './shipStats';
 
@@ -19,6 +20,21 @@ export function buildShipAssembly(ship: PartPlacement[]): ShipAssembly {
   const group = new THREE.Group();
   const byUid = new Map<string, THREE.Group>();
   const placementByUid = new Map(ship.map((p) => [p.uid, p]));
+
+  const assetRoot = new THREE.Group();
+  assetRoot.name = 'ship-asset-root';
+  group.add(assetRoot);
+
+  loadShipAsset().then((asset) => {
+    assetRoot.clear();
+    const clone = asset.clone(true);
+    clone.scale.setScalar(2.4);
+    clone.rotation.set(0, 0, 0);
+    clone.position.set(0, 1.2, 0);
+    assetRoot.add(clone);
+  }).catch((error) => {
+    console.warn('Failed to load ship asset', error);
+  });
 
   const build = (p: PartPlacement): THREE.Group => {
     let g = byUid.get(p.uid);

@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { ALL_RESOURCE_IDS, RAW_IDS, REFINED_IDS, RESOURCES, type ResourceId } from '../src/core/resources';
+import {
+  ALL_RESOURCE_IDS,
+  RAW_IDS,
+  REFINED_IDS,
+  RESOURCES,
+  resourceGroupLabel,
+  resourceGroupsForDisplay,
+  type ResourceId,
+} from '../src/core/resources';
 
 describe('resource catalog stays in sync', () => {
   it('has a RESOURCES entry for every id in RAW_IDS and REFINED_IDS', () => {
@@ -30,5 +38,14 @@ describe('resource catalog stays in sync', () => {
     expect(RAW_IDS).toContain('isotope');
     expect(RESOURCES.oreHigh.kind).toBe('raw');
     expect(RESOURCES.isotope.kind).toBe('raw');
+  });
+
+  it('groups resources into mined and derived display buckets', () => {
+    const groups = resourceGroupsForDisplay();
+    expect(groups.map((g) => g.kind)).toEqual(['raw', 'refined']);
+    expect(groups[0]!.ids).toEqual(RAW_IDS);
+    expect(groups[1]!.ids).toEqual(REFINED_IDS);
+    expect(resourceGroupLabel('raw')).toBe('Mined');
+    expect(resourceGroupLabel('refined')).toBe('Derived');
   });
 });

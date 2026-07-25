@@ -56,15 +56,59 @@ html, body {
 #topbar {
   position: absolute;
   top: 0; left: 0; right: 0;
+  z-index: 20;
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 8px 14px;
+  gap: 12px;
+  min-height: 62px;
+  padding: 10px 14px 12px;
   background: linear-gradient(rgba(10, 14, 18, 0.95), rgba(10, 14, 18, 0.6));
+  border-bottom: 2px solid rgba(89, 214, 255, 0.35);
   pointer-events: auto;
   flex-wrap: wrap;
 }
-#resources { display: flex; gap: 10px; flex-wrap: wrap; }
+.economy-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border: 1px solid rgba(89, 214, 255, 0.28);
+  border-radius: 999px;
+  background: rgba(13, 20, 26, 0.85);
+}
+.economy-title {
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--accent);
+  padding-right: 4px;
+}
+#resources {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.resource-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 6px 2px 0;
+}
+.resource-group-label {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--dim);
+  padding-right: 4px;
+}
+.cargo-strip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-left: 4px;
+}
 .chip {
   display: flex;
   align-items: center;
@@ -107,33 +151,44 @@ html, body {
 /* ---- side panel ---- */
 #panel {
   position: absolute;
-  top: 56px;
+  top: calc(var(--hud-top-offset, 112px) + 8px);
   right: 12px;
   width: 300px;
-  /* keep clear of the minimap (bottom-right, 160px + margins) */
   max-height: calc(100% - 248px);
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   pointer-events: auto;
+  padding: 8px;
+  border: 1px solid rgba(89, 214, 255, 0.25);
+  border-radius: 10px;
+  background: rgba(4, 7, 10, 0.58);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
+}
+.panel-shell-title {
+  font-size: 10px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--accent);
+  padding: 2px 2px 6px;
 }
 .panel-box {
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 6px;
-  padding: 10px 12px;
+  padding: 8px 10px;
 }
 .panel-box h3 {
-  margin: 0 0 8px;
-  font-size: 12px;
-  letter-spacing: 0.12em;
+  margin: 0 0 6px;
+  font-size: 11px;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--accent);
   font-weight: 600;
 }
-.panel-box .sub { color: var(--dim); font-size: 12px; margin: 4px 0; }
-.row { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+.panel-box .sub { color: var(--dim); font-size: 12px; margin: 3px 0; }
+.row { display: flex; align-items: center; gap: 8px; margin: 3px 0; }
 .row .grow { flex: 1; }
 .bar {
   height: 8px; flex: 1;
@@ -149,8 +204,8 @@ html, body {
   justify-content: space-between;
   align-items: center;
   gap: 8px;
-  padding: 6px 8px;
-  margin: 3px 0;
+  padding: 5px 7px;
+  margin: 2px 0;
   border: 1px solid var(--border);
   border-radius: 4px;
   cursor: pointer;
@@ -317,7 +372,7 @@ html, body {
 /* ---- screen title / helper text ---- */
 #screen-hint {
   position: absolute;
-  top: 60px;
+  top: calc(var(--hud-top-offset, 112px) + 12px);
   left: 14px;
   font-size: 12px;
   color: var(--dim);

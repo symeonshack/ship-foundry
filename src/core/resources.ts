@@ -27,6 +27,25 @@ export const RAW_IDS: RawResourceId[] = ['ice', 'regolith', 'ore', 'gas', 'oreHi
 export const REFINED_IDS: RefinedResourceId[] = ['fuel', 'alloy', 'ceramic', 'condensate'];
 export const ALL_RESOURCE_IDS: ResourceId[] = [...RAW_IDS, ...REFINED_IDS];
 
+export type ResourceGroupKind = 'raw' | 'refined';
+
+export interface ResourceGroup {
+  kind: ResourceGroupKind;
+  label: string;
+  ids: ResourceId[];
+}
+
+export function resourceGroupLabel(kind: ResourceGroupKind): string {
+  return kind === 'raw' ? 'Mined' : 'Derived';
+}
+
+export function resourceGroupsForDisplay(): ResourceGroup[] {
+  return [
+    { kind: 'raw', label: resourceGroupLabel('raw'), ids: [...RAW_IDS] },
+    { kind: 'refined', label: resourceGroupLabel('refined'), ids: [...REFINED_IDS] },
+  ];
+}
+
 export interface Recipe {
   id: string;
   input: RawResourceId;

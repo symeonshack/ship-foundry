@@ -1,5 +1,5 @@
 import type { Ctx } from '../core/ctx';
-import { ALL_RESOURCE_IDS, RESOURCES, type RawResourceId } from '../core/resources';
+import { ALL_RESOURCE_IDS, RESOURCES, resourceGroupLabel, resourceGroupsForDisplay, type RawResourceId } from '../core/resources';
 import { deriveStats } from '../building/shipStats';
 import { poiDef } from '../exploration/starSystem';
 import { listCheckpoints, restoreCheckpoint, wipeAll } from '../save/persistence';
@@ -31,6 +31,7 @@ const SCREEN_HINTS: Record<ScreenId, string> = {
 
 export class Hud {
   private chips = new Map<string, HTMLElement>();
+  private topBar: HTMLElement;
   private cargoChips: HTMLElement;
   private fuelFill: HTMLElement;
   private fuelLabel: HTMLElement;
@@ -51,20 +52,29 @@ export class Hud {
     // top bar
     const top = el('div');
     top.id = 'topbar';
+    this.topBar = top;
+    const economy = el('div', 'economy-strip');
+    economy.appendChild(el('div', 'economy-title', 'ECONOMY'));
     const res = el('div');
     res.id = 'resources';
-    for (const id of ALL_RESOURCE_IDS) {
-      const chip = el('span', `chip ${RESOURCES[id].kind}`);
-      const dot = el('span', 'dot');
-      dot.style.background = `#${RESOURCES[id].color.toString(16).padStart(6, '0')}`;
-      chip.append(dot, el('span', 'name', RESOURCES[id].name), el('span', 'amt', '0'));
-      chip.title = RESOURCES[id].desc;
-      this.chips.set(id, chip);
-      res.appendChild(chip);
+    for (const group of resourceGroupsForDisplay()) {
+      const groupWrap = el('div', 'resource-group');
+      groupWrap.appendChild(el('span', 'resource-group-label', resourceGroupLabel(group.kind)));
+      for (const id of group.ids) {
+        const chip = el('span', `chip ${RESOURCES[id].kind}`);
+        const dot = el('span', 'dot');
+        dot.style.background = `#${RESOURCES[id].color.toString(16).padStart(6, '0')}`;
+        chip.append(dot, el('span', 'name', RESOURCES[id].name), el('span', 'amt', '0'));
+        chip.title = RESOURCES[id].desc;
+        this.chips.set(id, chip);
+        groupWrap.appendChild(chip);
+      }
+      res.appendChild(groupWrap);
     }
-    this.cargoChips = el('span');
+    this.cargoChips = el('span', 'cargo-strip');
     res.appendChild(this.cargoChips);
-    top.appendChild(res);
+    economy.appendChild(res);
+    top.appendChild(economy);
 
     const fuelWrap = el('div');
     fuelWrap.id = 'fuel-wrap';
@@ -109,10 +119,14 @@ export class Hud {
     this.navButtons.get('reset')!.title = 'Saves & checkpoints';
     top.appendChild(nav);
     hud.appendChild(top);
+    this.syncTopbarOffset();
+    window.addEventListener('resize', () => this.syncTopbarOffset());
 
     // side panel container (screens fill it)
     const panel = el('div');
     panel.id = 'panel';
+    panel.className = 'panel-shell';
+    panel.appendChild(el('div', 'panel-shell-title', 'COMMAND CARD'));
     hud.appendChild(panel);
 
     // screen hint
@@ -157,6 +171,11 @@ export class Hud {
     this.refresh();
   }
 
+  private syncTopbarOffset(): void {
+    const height = Math.ceil(this.topBar.getBoundingClientRect().height + 8);
+    document.documentElement.style.setProperty('--hud-top-offset', `${height}px`);
+  }
+
   private refresh(): void {
     const s = this.ctx.store.state;
     for (const id of ALL_RESOURCE_IDS) {
@@ -190,7 +209,7 @@ export class Hud {
     this.fuelLabel.textContent = `${s.fuel.toFixed(0)}/${stats.fuelCap}`;
 
     const def = poiDef(s.currentPoi);
-    this.location.textContent = `◈ ${def.name.toUpperCase()}`;
+    this.location.textContent = `SITE • ${def.name.toUpperCase()}`;
     this.devBadge.style.display = this.ctx.store.hasFlag(FLAGS.DEV_MODE) ? '' : 'none';
 
     const atHome = s.currentPoi === 'foundry';

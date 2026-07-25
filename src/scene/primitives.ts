@@ -68,6 +68,7 @@ function at<T extends THREE.Object3D>(obj: T, x: number, y: number, z: number): 
 export function buildPartMesh(id: PartId): THREE.Group {
   const g = new THREE.Group();
   const hull = mat(C.hull, { flat: true });
+  const haloMaterial = mat(C.accent, { emissive: C.accent, emissiveIntensity: 0.45, metal: 0.6, rough: 0.35 });
   const dark = mat(C.hullDark);
   const frame = mat(C.frame);
 
@@ -77,6 +78,11 @@ export function buildPartMesh(id: PartId): THREE.Group {
       g.add(at(cyl(1.08, 1.08, 0.18, frame, 8), 0, 0.35, 0));
       g.add(at(cyl(1.08, 1.08, 0.18, frame, 8), 0, 2.05, 0));
       g.add(at(box(0.5, 0.3, 0.25, dark), 0, 1.2, 0.95));
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(1.15, 0.05, 8, 36), haloMaterial);
+      ring.rotation.x = Math.PI / 2;
+      ring.position.set(0, 1.2, 0);
+      ring.name = 'hull-ring';
+      g.add(ring);
       break;
     }
     case 'hullL': {
@@ -85,6 +91,11 @@ export function buildPartMesh(id: PartId): THREE.Group {
       g.add(at(cyl(1.34, 1.34, 0.2, frame, 8), 0, 1.8, 0));
       g.add(at(cyl(1.34, 1.34, 0.2, frame, 8), 0, 3.1, 0));
       g.add(at(box(0.6, 0.9, 0.2, dark), 0, 1.8, 1.22));
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(1.4, 0.06, 8, 40), haloMaterial);
+      ring.rotation.x = Math.PI / 2;
+      ring.position.set(0, 1.8, 0);
+      ring.name = 'hull-ring';
+      g.add(ring);
       break;
     }
     case 'engine1': {
@@ -429,6 +440,21 @@ export function buildSiloMesh(w: number, d: number, color: number): THREE.Group 
   }
   g.add(at(box(w * 0.9, 0.12, 0.2, frame), 0, 1.0, 0));
   g.add(at(sph(0.08, mat(color, { emissive: color, emissiveIntensity: 0.8 })), w * 0.36, 1.7, d * 0.3));
+  return g;
+}
+
+export function buildSolarArrayMesh(w: number, d: number, color: number): THREE.Group {
+  const g = new THREE.Group();
+  const frame = mat(C.frame);
+  g.add(at(box(w, 0.25, d, frame), 0, 0.125, 0));
+  const panelMat = mat(0x2c4a6e, { metal: 0.6, rough: 0.3 });
+  for (const sx of [-0.25, 0.25] as const) {
+    g.add(at(cyl(0.05, 0.05, 0.6, frame, 6), w * sx, 0.4, 0));
+    const panel = at(box(w * 0.42, 0.06, d * 0.72, panelMat), w * sx, 0.78, 0);
+    panel.rotation.x = -0.5;
+    g.add(panel);
+  }
+  g.add(at(sph(0.08, mat(color, { emissive: color, emissiveIntensity: 0.7 })), w * 0.4, 0.5, d * 0.38));
   return g;
 }
 

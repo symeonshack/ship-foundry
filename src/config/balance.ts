@@ -150,6 +150,20 @@ export const BALANCE = {
       baseUnitCap: 2,
       /** each active Power Relay raises the cap by this much */
       perRelay: 3,
+      /** day/night cycle that drives solar output */
+      dayNight: {
+        /** seconds for one full day+night; t=0 starts at solar noon */
+        periodSec: 120,
+      },
+      /** solar-array-specific behaviour */
+      solar: {
+        /** dust fraction gained per second of active daylight operation (full at ~180s) */
+        dustPerSec: 0.0055,
+        /** output multiplier lost at full dust (0.6 → a filthy panel makes 40%) */
+        dustMaxDerate: 0.6,
+        /** a Clean action clears full dust in this long; the array is offline meanwhile */
+        cleanTimeSec: 8,
+      },
     },
   },
 
