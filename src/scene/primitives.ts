@@ -333,6 +333,201 @@ export function buildMonolith(variant: number): THREE.Group {
   return g;
 }
 
+// ---- Landing Zone structures ----
+
+/** scale an RGB hex toward black by factor f (0..1) — used for damage tinting */
+function scaleColor(hex: number, f: number): number {
+  const r = Math.round(((hex >> 16) & 0xff) * f);
+  const gc = Math.round(((hex >> 8) & 0xff) * f);
+  const b = Math.round((hex & 0xff) * f);
+  return (r << 16) | (gc << 8) | b;
+}
+
+/**
+ * Placeholder structure body with AoE-style scaffolding stages — the model
+ * visibly steps through construction instead of popping in finished:
+ *   0 foundation slab → 1 corner frame → 2 half-built shell → 3 finished.
+ * A finished building (stage 3) also shows progressive battle damage via
+ * `damage`: 0 pristine → 1 scorched/dimmed → 2 buckled with a knocked-off
+ * corner and its power light out. Every structure renders through this until
+ * its bespoke builder lands with its Part III phase (buildSiloMesh etc.) —
+ * selection, placement, and damage systems are built against real meshes from
+ * day one this way.
+ */
+export function buildStructurePlaceholder(
+  w: number,
+  d: number,
+  color: number,
+  stage: 0 | 1 | 2 | 3 = 3,
+  damage: 0 | 1 | 2 = 0,
+): THREE.Group {
+  const g = new THREE.Group();
+  const frame = mat(C.frame);
+  const scorch = mat(0x15130f, { flat: true, rough: 1 });
+  // stage 0+: the foundation slab (collision is locked from placement on)
+  g.add(at(box(w, 0.25, d, frame), 0, 0.125, 0));
+  if (stage >= 1) {
+    // corner frame columns
+    for (const [sx, sz] of [[-1, -1], [-1, 1], [1, -1], [1, 1]] as const) {
+      g.add(at(box(0.12, 1.2, 0.12, frame), sx * (w * 0.35 - 0.06), 0.85, sz * (d * 0.35 - 0.06)));
+    }
+  }
+  if (stage === 2) {
+    // half-built shell: lower body only, still showing frame above
+    const shell = mat(color, { flat: true, rough: 0.7, metal: 0.3, transparent: true, opacity: 0.8 });
+    g.add(at(box(w * 0.7, 0.55, d * 0.7, shell), 0, 0.52, 0));
+  }
+  if (stage >= 3) {
+    const bodyColor = damage === 0 ? color : damage === 1 ? scaleColor(color, 0.66) : scaleColor(color, 0.44);
+    const body = mat(bodyColor, { flat: true, rough: damage ? 0.9 : 0.7, metal: 0.3 });
+    const bodyMesh = at(box(w * 0.7, 1.1, d * 0.7, body), 0, 0.8, 0);
+    if (damage === 2) bodyMesh.rotation.z = 0.14; // buckled
+    g.add(bodyMesh);
+    // power light: bright when pristine, dim when damaged, dark when heavy
+    if (damage < 2) {
+      g.add(
+        at(
+          sph(0.09, mat(color, { emissive: color, emissiveIntensity: damage === 0 ? 0.8 : 0.22 })),
+          w * 0.28,
+          1.5,
+          d * 0.28,
+        ),
+      );
+    }
+    if (damage >= 1) {
+      // scorch scar across the roof
+      g.add(at(box(w * 0.32, 0.06, d * 0.26, scorch), -w * 0.14, 1.36, d * 0.09));
+    }
+    if (damage >= 2) {
+      // corner blown out: exposed frame stub + a fallen chunk of hull
+      g.add(at(box(0.12, 0.7, 0.12, frame), w * 0.3, 0.7, d * 0.3));
+      const chunk = at(box(w * 0.26, 0.4, d * 0.26, mat(scaleColor(color, 0.44), { flat: true })), w * 0.2, 0.24, -d * 0.24);
+      chunk.rotation.set(0.3, 0.5, 0.2);
+      g.add(chunk);
+      g.add(at(box(w * 0.34, 0.06, d * 0.3, scorch), w * 0.1, 1.36, -d * 0.12));
+    }
+  }
+  return g;
+}
+
+/**
+ * Bespoke finished-structure bodies — distinct silhouettes for the completed,
+ * undamaged look. BaseView uses these only for `active` + pristine structures;
+ * construction scaffolds and battle damage fall back to the generic staged
+ * placeholder above. Each sits on the same foundation slab as the placeholder
+ * so the two read as the same object at different life stages.
+ */
+export function buildSiloMesh(w: number, d: number, color: number): THREE.Group {
+  const g = new THREE.Group();
+  const frame = mat(C.frame);
+  g.add(at(box(w, 0.25, d, frame), 0, 0.125, 0));
+  const tank = mat(color, { flat: true, rough: 0.6, metal: 0.4 });
+  const r = Math.min(w, d) * 0.22;
+  for (const sx of [-0.28, 0.28] as const) {
+    g.add(at(cyl(r, r, 1.3, tank, 12), w * sx, 0.9, 0));
+    g.add(at(sph(r, tank, 12), w * sx, 1.55, 0));
+  }
+  g.add(at(box(w * 0.9, 0.12, 0.2, frame), 0, 1.0, 0));
+  g.add(at(sph(0.08, mat(color, { emissive: color, emissiveIntensity: 0.8 })), w * 0.36, 1.7, d * 0.3));
+  return g;
+}
+
+export function buildRelayMesh(w: number, d: number, color: number): THREE.Group {
+  const g = new THREE.Group();
+  const frame = mat(C.frame);
+  g.add(at(box(w, 0.25, d, frame), 0, 0.125, 0));
+  g.add(at(box(w * 0.6, 0.6, d * 0.6, mat(color, { flat: true, rough: 0.7, metal: 0.4 })), 0, 0.5, 0));
+  g.add(at(cyl(0.05, 0.07, 2.4, frame, 6), 0, 1.9, 0));
+  for (const y of [1.5, 2.1, 2.7]) g.add(at(box(0.9, 0.05, 0.05, frame), 0, y, 0));
+  const tip = at(sph(0.1, mat(color, { emissive: color, emissiveIntensity: 1 })), 0, 3.1, 0);
+  tip.name = 'beacon';
+  g.add(tip);
+  return g;
+}
+
+export function buildRefineryMesh(w: number, d: number, color: number): THREE.Group {
+  const g = new THREE.Group();
+  const frame = mat(C.frame);
+  g.add(at(box(w, 0.25, d, frame), 0, 0.125, 0));
+  g.add(at(box(w * 0.75, 0.9, d * 0.7, mat(color, { flat: true, rough: 0.8, metal: 0.3 })), 0, 0.7, 0));
+  // chimney stack
+  g.add(at(cyl(0.22, 0.26, 1.4, mat(0x7a6a56, { flat: true }), 10), w * 0.28, 1.4, -d * 0.2));
+  g.add(at(cyl(0.16, 0.24, 0.4, frame, 10), w * 0.28, 2.2, -d * 0.2));
+  // holding tank
+  g.add(at(cyl(0.3, 0.3, 0.7, mat(0x8a949c, { metal: 0.5 }), 12), -w * 0.28, 0.6, d * 0.22));
+  g.add(at(sph(0.3, mat(0x8a949c, { metal: 0.5 }), 12), -w * 0.28, 0.95, d * 0.22));
+  g.add(at(sph(0.09, mat(color, { emissive: color, emissiveIntensity: 0.7 })), w * 0.3, 1.3, d * 0.28));
+  return g;
+}
+
+/**
+ * A ruined structure: a scorched patch with scattered debris chunks and a
+ * couple of leaning skeletal frame remnants. Pass a seeded rand so a given
+ * wreck looks the same every time the scene rebuilds.
+ */
+export function buildStructureRubble(w: number, d: number, rand: () => number): THREE.Group {
+  const g = new THREE.Group();
+  const debris = mat(0x33383d, { flat: true, rough: 0.95, metal: 0.1 });
+  const frame = mat(C.frame, { flat: true });
+  const scorch = mat(0x15130f, { flat: true, rough: 1 });
+  g.add(at(box(w * 0.95, 0.05, d * 0.95, scorch), 0, 0.03, 0));
+  const n = 6 + Math.floor(rand() * 4);
+  for (let i = 0; i < n; i++) {
+    const bw = 0.3 + rand() * 0.6;
+    const bh = 0.12 + rand() * 0.35;
+    const chunk = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, 0.3 + rand() * 0.6), i % 3 === 0 ? frame : debris);
+    chunk.position.set((rand() - 0.5) * w * 0.8, bh * 0.5 + 0.05, (rand() - 0.5) * d * 0.8);
+    chunk.rotation.set((rand() - 0.5) * 0.6, rand() * Math.PI, (rand() - 0.5) * 0.6);
+    g.add(chunk);
+  }
+  for (const sx of [-1, 1] as const) {
+    const col = at(box(0.1, 0.6 + rand() * 0.4, 0.1, frame), sx * w * 0.22, 0.35, (rand() - 0.5) * d * 0.4);
+    col.rotation.z = sx * (0.3 + rand() * 0.3);
+    g.add(col);
+  }
+  return g;
+}
+
+/**
+ * Placement ghost: a translucent footprint volume + edge outline that follows
+ * the cursor while a structure is armed. BaseView retints the named children
+ * (`ghost-fill`, `ghost-edge`) green/red as validity changes.
+ */
+export function buildStructureGhost(w: number, d: number): THREE.Group {
+  const g = new THREE.Group();
+  const fill = new THREE.Mesh(
+    new THREE.BoxGeometry(w, 1.1, d),
+    mat(C.green, { transparent: true, opacity: 0.28, emissive: C.green, emissiveIntensity: 0.5 }),
+  );
+  fill.position.y = 0.55;
+  fill.name = 'ghost-fill';
+  g.add(fill);
+  const edge = new THREE.LineSegments(
+    new THREE.EdgesGeometry(new THREE.BoxGeometry(w, 1.1, d)),
+    new THREE.LineBasicMaterial({ color: C.green, transparent: true, opacity: 0.9 }),
+  );
+  edge.position.y = 0.55;
+  edge.name = 'ghost-edge';
+  g.add(edge);
+  return g;
+}
+
+/** flat ring marking a selected structure/unit — translucent while under
+ * construction, solid once complete (the classic RTS selection-ring tell) */
+export function buildSelectionRing(radius: number, solid = true): THREE.Mesh {
+  const ring = new THREE.Mesh(
+    new THREE.TorusGeometry(radius, 0.09, 8, 36),
+    mat(C.accent, {
+      emissive: C.accent,
+      emissiveIntensity: solid ? 0.9 : 0.5,
+      transparent: !solid,
+      opacity: solid ? 1 : 0.45,
+    }),
+  );
+  ring.rotation.x = Math.PI / 2;
+  return ring;
+}
+
 // ---- site landmarks (Phase 3: distinct regions worth finding) ----
 
 export type SiteLandmarkKind = 'spires' | 'crater' | 'wreck' | 'vent';

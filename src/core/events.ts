@@ -24,6 +24,14 @@ export interface GameEvents {
   'node:collapsed': { poiId: string; nodeId: string };
   'site:discovery': { poiId: string; id: string; label: string };
 
+  // Landing Zone base-building (drone payloads get real shapes at Phase 24)
+  'structure:placed': { uid: string; defId: string };
+  'structure:complete': { uid: string; defId: string };
+  'structure:destroyed': { uid: string; defId: string };
+  'structure:repaired': { uid: string; defId: string };
+  'drone:produced': Record<string, never>;
+  'drone:idle': Record<string, never>;
+
   'refine:complete': { recipeId: string; output: RefinedResourceId };
   'build:placed': { partId: PartId };
   'build:removed': { partId: PartId };

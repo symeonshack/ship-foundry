@@ -1,5 +1,5 @@
 import type { EventBus } from './events';
-import type { FlagValue } from './flags';
+import { FLAGS, type FlagValue } from './flags';
 import {
   ALL_RESOURCE_IDS,
   type RawResourceId,
@@ -7,6 +7,9 @@ import {
   type ResourceId,
 } from './resources';
 import type { PartId } from '../building/partCatalog';
+import type { StructureInstance } from '../base/structures';
+
+export type { StructureInstance };
 
 export interface PartPlacement {
   uid: string;
@@ -78,6 +81,29 @@ export interface StructureState {
   logsRead: string[];
 }
 
+/**
+ * Landing Zone base-building state (mining-ops Landing Zone plan).
+ * `StructureInstance` is the real catalog-backed shape from
+ * `src/base/structures.ts`; `DroneInstance` stays a stub until Phase 19.
+ *
+ * Deliberately a top-level `GameState` field, not nested under `pois.foundry`:
+ * Landing Zone is semantically singular and must keep simulating every frame
+ * regardless of which screen is active, unlike per-POI fields that only
+ * matter while that POI's own screen instance is alive.
+ */
+export interface DroneInstance {
+  uid: string;
+  type: string;
+  x: number;
+  z: number;
+}
+
+export interface BaseState {
+  structures: StructureInstance[];
+  drones: DroneInstance[];
+  rallyPoint: { x: number; z: number } | null;
+}
+
 export interface GameState {
   version: 1;
   createdAt: number;
@@ -98,6 +124,8 @@ export interface GameState {
   /** carried tools/components (Phase 4) */
   items: string[];
   structure: StructureState;
+  /** Landing Zone's persistent home-base simulation state */
+  base: BaseState;
 }
 
 export function createNewGame(): GameState {
@@ -126,12 +154,16 @@ export function createNewGame(): GameState {
     currentPoi: 'foundry',
     pois: {},
     refinery: { tier: 1, queue: [] },
-    flags: {},
+    // TODO(Phase 16): remove this default-true seed once the Foundry structure
+    // exists as a buildable — from then on FOUNDRY_BUILT is earned by
+    // constructing it at the Landing Zone site.
+    flags: { [FLAGS.FOUNDRY_BUILT]: true },
     log: [],
     gertySeen: {},
     encounter: { started: false, solved: false, turnCount: 0, modules: [] },
     items: [],
     structure: { panelOpened: false, maintOpen: false, fragmentTaken: false, logsRead: [] },
+    base: { structures: [], drones: [], rallyPoint: null },
   };
 }
 

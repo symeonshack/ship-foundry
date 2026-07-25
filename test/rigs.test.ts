@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { tickExtraction, type ActiveRig } from '../src/mining/rigs';
+import { rigCanMine, rigTypeFor, tickExtraction, type ActiveRig } from '../src/mining/rigs';
 
 const rig = (over: Partial<ActiveRig> = {}): ActiveRig => ({
   id: 'r1',
@@ -52,5 +52,26 @@ describe('tickExtraction', () => {
       if (tickExtraction(r, node, 0.1) === 1) r.buffer += 1; // refund
     }
     expect(r.buffer).toBeLessThanOrEqual(3.5);
+  });
+});
+
+describe('Landing Zone resource routing (high-grade ore, isotope)', () => {
+  it('the drill rig works high-grade ore and isotope — starting shielding is sufficient, no new rig type', () => {
+    expect(rigCanMine('drill', 'oreHigh')).toBe(true);
+    expect(rigCanMine('drill', 'isotope')).toBe(true);
+    expect(rigTypeFor('oreHigh')).toBe('drill');
+    expect(rigTypeFor('isotope')).toBe('drill');
+  });
+
+  it('the cryo rig does not work high-grade ore or isotope', () => {
+    expect(rigCanMine('cryo', 'oreHigh')).toBe(false);
+    expect(rigCanMine('cryo', 'isotope')).toBe(false);
+  });
+
+  it('existing regolith/ore/ice/gas routing is unchanged', () => {
+    expect(rigTypeFor('regolith')).toBe('drill');
+    expect(rigTypeFor('ore')).toBe('drill');
+    expect(rigTypeFor('ice')).toBe('cryo');
+    expect(rigTypeFor('gas')).toBe('cryo');
   });
 });

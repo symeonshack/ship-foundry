@@ -36,7 +36,11 @@ export const POIS: Record<string, PoiDef> = {
     kind: 'home',
     color: 0x8a7f6a,
     pos: [0, 0],
-    composition: {},
+    // modest, tutorial-tier deposits — the landing site, not a rich claim.
+    // oreHigh (the mission quota target) and the small local isotope seam
+    // exist here too; capability-gating for the high-grade vein arrives with
+    // the mission-arc phase, for now the deposits simply exist.
+    composition: { regolith: 0.5, ore: 0.4, ice: 0.3, oreHigh: 0.3, isotope: 0.2 },
     hazard: { type: null, intensity: 0 },
     blurb: 'The deployment platform. Or what landed of it.',
     detail: 'Shipyard and refinery are functional. The mission manifest is not where it should be.',

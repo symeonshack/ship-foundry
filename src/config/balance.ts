@@ -13,8 +13,19 @@ export const BALANCE = {
   terrain: {
     /** world units along one chunk edge */
     chunkSize: 24,
-    /** grid squares per chunk edge (vertices per edge = this + 1) */
+    /** grid squares per chunk edge at full detail (vertices per edge = this + 1) */
     chunkSegments: 16,
+    /**
+     * chunks farther than this from the focus build at coarse LOD — quarter
+     * the triangles. Kept inside the fog band so the lower detail (and the
+     * small seam where the tiers meet) reads as distance haze, not a pop.
+     */
+    lodRadius: 72,
+    /** coarse-tier segments per chunk edge (half the grid → a quarter the triangles) */
+    lodSegments: 8,
+    /** distance band around lodRadius a chunk must clear before re-meshing — stops
+     * a focus hovering on the boundary from thrashing between the two tiers */
+    lodHysteresis: 8,
     /** chunks whose footprint lies within this distance of the focus point get loaded */
     loadRadius: 96,
     /**
@@ -82,11 +93,64 @@ export const BALANCE = {
     camera: {
       minDistance: 8,
       maxDistance: 110,
-      maxPolarFrac: 0.46,
+      /** pitch clamp, fractions of π from straight overhead — an RTS band,
+       * never near-horizontal (that's what made it feel first-person) */
+      minPolarFrac: 0.12,
+      maxPolarFrac: 0.38,
+      /** WASD/arrow pan speed, world units/sec at reference zoom distance 30 */
+      keyPanSpeed: 30,
+    },
+    minimap: {
+      /** canvas edge, px */
+      size: 160,
+      /** redraw interval, seconds */
+      updateSec: 0.12,
     },
     /** default site fog — hides the chunk-streaming horizon (cold sites override, denser) */
     fogNear: 55,
     fogFar: 100,
+  },
+
+  /**
+   * Landing Zone — RTS base-building at the Foundry site (see
+   * landing-zone-plan.md). Per-structure data (costs, build times, HP)
+   * lives in the catalog at src/base/structures.ts, same convention as the
+   * ship-part catalog; the knobs here are cross-cutting factors. Remaining
+   * sub-groups (drones/power/threat/food/mission) land with their phases.
+   */
+  landingZone: {
+    structures: {
+      /** max-HP fraction a just-started construction has; ramps to 1 at completion */
+      hpFractionAtStart: 0.25,
+      /** repair cost = def.cost × missing-HP fraction × this (cheaper than rebuilding) */
+      repairCostFactor: 0.5,
+      /** repair duration = buildTimeSec × missing-HP fraction × this (faster than building) */
+      repairSpeedFactor: 0.5,
+      /** rebuilding a destroyed structure costs def.cost × this — the cleanup premium */
+      rebuildCostFactor: 1.5,
+      /** max height difference across a footprint's corners/center — flat ground only */
+      maxSlope: 1.2,
+      /** structures must sit this far inside the site walls */
+      placementEdgeMargin: 2,
+      /** HP-fraction breakpoints where the model shows visible damage (AoE-style):
+       * below stage1 → damaged, below stage2 → heavily damaged, 0 → ruined */
+      damageStage1: 0.6,
+      damageStage2: 0.3,
+    },
+    /** on-site stockpile capacity — mining stalls when the base is full */
+    storage: {
+      /** total the base can hold before any Storage Silo is built */
+      baseCap: 40,
+      /** each active Storage Silo raises the cap by this much */
+      perSilo: 60,
+    },
+    /** supply cap: how many rigs+drones the base can run at once (StarCraft-style) */
+    power: {
+      /** runnable from the base alone, before any Power Relay */
+      baseUnitCap: 2,
+      /** each active Power Relay raises the cap by this much */
+      perRelay: 3,
+    },
   },
 
   /** The #terrain proof-of-concept range (dev harness screen, not a gameplay site). */

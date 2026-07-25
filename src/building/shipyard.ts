@@ -30,6 +30,8 @@ export class ShipyardScreen implements GameScreen {
   private t = 0;
   private unsub: (() => void) | null = null;
   private livePanels: LivePanel[] = [];
+  /** Landing Zone gate: true while there is no built Foundry (see FLAGS.FOUNDRY_BUILT) */
+  private locked = false;
 
   constructor(private ctx: Ctx, canvas: HTMLCanvasElement) {
     this.scene.background = new THREE.Color(0x0a0e12);
@@ -59,6 +61,17 @@ export class ShipyardScreen implements GameScreen {
   }
 
   enter(): void {
+    // Landing Zone gate, defense in depth behind the disabled nav button:
+    // with no built Foundry there is no shipyard — render a locked notice
+    // instead of the build UI so a direct nav can't bypass the gate.
+    this.locked = !this.ctx.store.hasFlag(FLAGS.FOUNDRY_BUILT);
+    if (this.locked) {
+      clearPanel();
+      const b = box('Foundry Offline');
+      b.appendChild(el('p', 'sub', 'There is no working foundry here yet. Establish one at the site before any ship work can happen.'));
+      b.appendChild(button('Back to ship', () => this.ctx.nav('interior')));
+      return;
+    }
     this.rebuildShip();
     this.renderPanel();
     this.unsub = this.ctx.bus.on('state:changed', () => {
@@ -152,6 +165,7 @@ export class ShipyardScreen implements GameScreen {
   // ---- interaction ----
 
   onClick(ndc: THREE.Vector2): void {
+    if (this.locked) return;
     this.raycaster.setFromCamera(ndc, this.camera);
     if (this.selectedPart) {
       const hit = this.raycaster.intersectObjects(this.markers, false)[0];
@@ -188,6 +202,7 @@ export class ShipyardScreen implements GameScreen {
   }
 
   onPointerMove(ndc: THREE.Vector2): void {
+    if (this.locked) return;
     if (!this.selectedPart || this.markers.length === 0) return;
     this.raycaster.setFromCamera(ndc, this.camera);
     const hit = this.raycaster.intersectObjects(this.markers, false)[0];

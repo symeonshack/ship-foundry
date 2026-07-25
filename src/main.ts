@@ -8,6 +8,8 @@ import { Gerty } from './companion/gerty';
 import { LINES, TOPICS } from './companion/script';
 import { DiscoveryLog } from './companion/discoveryLog';
 import { Refinery } from './mining/refinery';
+import { BaseSim } from './base/baseSim';
+import { STRUCTURES } from './base/structures';
 import { autoRefuel } from './mining/hauling';
 import { ShipyardScreen } from './building/shipyard';
 import { StarMapScreen } from './exploration/starMap';
@@ -17,7 +19,7 @@ import { InteriorScreen } from './interior/interiorScene';
 import { FlightScreen } from './flight/flightScene';
 import { StructureScreen } from './structure/structureScene';
 import { TerrainTestScreen } from './terrain/terrainTestScreen';
-import type { StructureState } from './core/state';
+import type { GameState, StructureState } from './core/state';
 import { Hud } from './ui/hud';
 import type { Ctx } from './core/ctx';
 
@@ -35,6 +37,7 @@ gerty.wire();
 log.wire();
 
 const refinery = new Refinery(store);
+const baseSim = new BaseSim(store);
 
 let manager: ScreenManager;
 const nav = (id: ScreenId): void => manager.show(id);
@@ -46,6 +49,7 @@ let saveTimer = 0;
 manager = new ScreenManager(canvas, bus, (dt) => {
   store.state.playSeconds += dt;
   refinery.update(dt);
+  baseSim.tick(dt); // the base keeps building/running no matter which screen is up
   gerty.update(dt);
   if (store.state.currentPoi === 'foundry') autoRefuel(store);
   if (store.hasFlag(FLAGS.DEV_MODE)) devTopUp();
@@ -73,6 +77,17 @@ new Hud(ctx);
 for (const event of ['travel:arrive', 'build:placed', 'refine:complete', 'encounter:solved'] as const) {
   bus.on(event, () => saveGame(store.state));
 }
+bus.on('structure:complete', ({ defId }) => {
+  toast(`${STRUCTURES[defId as keyof typeof STRUCTURES].name} online`, 'good');
+  saveGame(store.state);
+});
+bus.on('structure:repaired', ({ defId }) => {
+  toast(`${STRUCTURES[defId as keyof typeof STRUCTURES].name} repaired`, 'good');
+});
+bus.on('structure:destroyed', ({ defId }) => {
+  toast(`${STRUCTURES[defId as keyof typeof STRUCTURES].name} destroyed`, 'bad');
+  saveGame(store.state);
+});
 window.addEventListener('beforeunload', () => saveGame(store.state));
 
 // rollback checkpoints at the moments worth retrying from
@@ -95,6 +110,17 @@ manager.start();
   if (!raw.items) raw.items = [];
   if (!raw.structure) raw.structure = { panelOpened: false, maintOpen: false, fragmentTaken: false, logsRead: [] };
 }
+
+// normalize saves from before Landing Zone's base-building state existed
+{
+  const raw = store.state as { base?: GameState['base'] };
+  if (!raw.base) raw.base = { structures: [], drones: [], rallyPoint: null };
+}
+
+// saves from before the shipyard gate existed had a working Foundry all
+// along — keep it that way. TODO(Phase 16): revisit alongside the
+// earned-by-construction flip.
+if (!store.hasFlag(FLAGS.FOUNDRY_BUILT)) store.setFlag(FLAGS.FOUNDRY_BUILT, true);
 
 // retro-apply the starting fuel reserve to saves created before it existed
 const FUEL_RESERVE_MIGRATION = 'migration.fuelReserve';

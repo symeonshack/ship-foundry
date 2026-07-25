@@ -64,6 +64,35 @@ export function desiredChunks(fx: number, fz: number, chunkSize: number, loadRad
   return out;
 }
 
+export interface LodConfig {
+  chunkSegments: number;
+  lodSegments: number;
+  lodRadius: number;
+  /** re-mesh band around lodRadius; a chunk must clear it before switching tiers */
+  lodHysteresis?: number;
+}
+
+/**
+ * Segment resolution a chunk should build at, given its focus-distance: full
+ * detail near the focus, coarse (half the grid) beyond lodRadius. Passing the
+ * chunk's current resolution applies hysteresis — a full-detail chunk only
+ * drops to coarse once clearly past the boundary, and vice versa — so a focus
+ * jittering on the boundary doesn't re-mesh every frame. Pure and tested.
+ */
+export function lodSegmentsFor(dist: number, cfg: LodConfig, currentSegs?: number): number {
+  const h = cfg.lodHysteresis ?? 0;
+  if (currentSegs === cfg.lodSegments) {
+    // coarse now: upgrade to full only once well inside the boundary
+    return dist < cfg.lodRadius - h ? cfg.chunkSegments : cfg.lodSegments;
+  }
+  if (currentSegs === cfg.chunkSegments) {
+    // full now: downgrade only once well past the boundary
+    return dist > cfg.lodRadius + h ? cfg.lodSegments : cfg.chunkSegments;
+  }
+  // fresh chunk: pick straight off distance
+  return dist > cfg.lodRadius ? cfg.lodSegments : cfg.chunkSegments;
+}
+
 export interface StreamConfig {
   chunkSize: number;
   loadRadius: number;

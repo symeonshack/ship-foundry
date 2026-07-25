@@ -23,7 +23,7 @@ const SCREEN_HINTS: Record<ScreenId, string> = {
   flight: 'TRANSIT — A/D steer against drift, W/S throttle. On descent: HOLD SPACE to retro-burn before the ground arrives.',
   shipyard: 'SHIPYARD — pick a part, click a glowing socket to fit it. Click a fitted part to inspect or remove it. Watch the engines: glow means strain.',
   starmap: 'STAR MAP — click a contact to survey it. The outer ring is your point of no return; the inner ring gets you home again.',
-  surface: 'SURFACE OPS — pan/zoom to survey: resource veins and landmarks are scattered across the site, charted as you approach in either view. Arm a rig, click a deposit to deploy. TAB drops you on foot wherever the camera is looking; E to interact. Hazards tick while you stay, in either view.',
+  surface: 'SURFACE OPS — drag or WASD to pan, wheel to zoom, right-drag to rotate. Minimap (bottom right): click to jump; H recenters on the lander. Arm a rig, click a deposit to deploy. TAB drops you on foot wherever the camera is looking; E to interact.',
   encounter: 'THE RELAY — no shared language. Place a module; watch what it keeps, what it removes, what it points at.',
   structure: 'THE ARCHIVE — WASD/mouse, E to interact. Read the plates. The resident is not hostile; it is thorough. Its rules can be satisfied to the letter.',
   terraintest: 'TERRAIN RANGE — dev proof of concept. Pan/zoom: chunks stream under the camera focus. TAB drops you on foot at that spot; TAB again lifts back out.',
@@ -195,11 +195,17 @@ export class Hud {
 
     const atHome = s.currentPoi === 'foundry';
     const inFlight = this.activeScreen === 'flight';
+    const foundryBuilt = this.ctx.store.hasFlag(FLAGS.FOUNDRY_BUILT);
     this.navButtons.get('ship')!.disabled = this.activeScreen === 'interior' || inFlight;
-    this.navButtons.get('shipyard')!.disabled = !atHome || inFlight;
-    this.navButtons.get('shipyard')!.title = atHome ? '' : 'The shipyard is back at the Foundry.';
-    this.navButtons.get('site')!.disabled = atHome || inFlight;
-    this.navButtons.get('site')!.textContent = atHome ? 'SITE' : `SITE: ${def.name.toUpperCase()}`;
+    this.navButtons.get('shipyard')!.disabled = !atHome || inFlight || !foundryBuilt;
+    this.navButtons.get('shipyard')!.title = !foundryBuilt
+      ? 'No working foundry yet — establish one at the site first.'
+      : atHome
+        ? ''
+        : 'The shipyard is back at the Foundry.';
+    // the Foundry is a live buildable/mineable site now, same as any away-site
+    this.navButtons.get('site')!.disabled = inFlight;
+    this.navButtons.get('site')!.textContent = `SITE: ${def.name.toUpperCase()}`;
   }
 
   private showGerty(line: SpokenLine): void {

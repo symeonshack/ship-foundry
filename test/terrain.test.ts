@@ -5,6 +5,7 @@ import {
   chunkVertexWorld,
   desiredChunks,
   distToChunk,
+  lodSegmentsFor,
   parseChunkKey,
   planStreaming,
 } from '../src/terrain/chunks';
@@ -101,6 +102,36 @@ describe('chunk boundary continuity', () => {
       const b = chunkVertexWorld({ cx: 0, cz: 3 }, 0, i, S, N);
       expect(hf(a.x, a.z)).toBe(hf(b.x, b.z));
     }
+  });
+});
+
+describe('lodSegmentsFor (LOD tier selection)', () => {
+  const cfg = BALANCE.terrain;
+
+  it('full detail near the focus, coarse beyond lodRadius', () => {
+    expect(lodSegmentsFor(0, cfg)).toBe(cfg.chunkSegments);
+    expect(lodSegmentsFor(cfg.lodRadius - 1, cfg)).toBe(cfg.chunkSegments);
+    expect(lodSegmentsFor(cfg.lodRadius + 1, cfg)).toBe(cfg.lodSegments);
+    expect(lodSegmentsFor(cfg.loadRadius, cfg)).toBe(cfg.lodSegments);
+  });
+
+  it('coarse LOD really is fewer segments (a quarter the triangles)', () => {
+    expect(cfg.lodSegments).toBeLessThan(cfg.chunkSegments);
+    // triangles scale with segments²; halving segments quarters the count
+    expect((cfg.lodSegments / cfg.chunkSegments) ** 2).toBeLessThanOrEqual(0.3);
+  });
+
+  it('hysteresis: a full-detail chunk holds its tier inside the boundary band', () => {
+    const justPast = cfg.lodRadius + (cfg.lodHysteresis ?? 0) - 1;
+    // full-detail chunk drifting just past lodRadius stays full until clear of the band
+    expect(lodSegmentsFor(justPast, cfg, cfg.chunkSegments)).toBe(cfg.chunkSegments);
+    expect(lodSegmentsFor(cfg.lodRadius + (cfg.lodHysteresis ?? 0) + 1, cfg, cfg.chunkSegments)).toBe(cfg.lodSegments);
+  });
+
+  it('hysteresis: a coarse chunk holds coarse until well inside the boundary', () => {
+    const justInside = cfg.lodRadius - (cfg.lodHysteresis ?? 0) + 1;
+    expect(lodSegmentsFor(justInside, cfg, cfg.lodSegments)).toBe(cfg.lodSegments);
+    expect(lodSegmentsFor(cfg.lodRadius - (cfg.lodHysteresis ?? 0) - 1, cfg, cfg.lodSegments)).toBe(cfg.chunkSegments);
   });
 });
 

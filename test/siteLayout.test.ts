@@ -8,6 +8,7 @@ import {
 } from '../src/mining/siteLayout';
 import { mulberry32 } from '../src/scene/primitives';
 import { BALANCE } from '../src/config/balance';
+import { POIS } from '../src/exploration/starSystem';
 
 const composition = { ore: 0.9, regolith: 0.5 };
 
@@ -64,6 +65,13 @@ describe('buildSiteLayout', () => {
     const layout = buildSiteLayout(113, {});
     expect(layout.clusters).toEqual([]);
     expect(layout.landmarks).toEqual([]);
+  });
+
+  it('the Foundry site now has a real composition and generates chartable veins (Landing Zone Phase 1)', () => {
+    const foundry = POIS.foundry!;
+    expect(Object.keys(foundry.composition).length).toBeGreaterThan(0);
+    const layout = buildSiteLayout(foundry.terrainSeed, foundry.composition);
+    expect(layout.clusters.length).toBeGreaterThanOrEqual(1);
   });
 });
 

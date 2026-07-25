@@ -25,6 +25,10 @@ export const FLAGS = {
 
   // progression
   INTRO_DONE: 'intro.done',
+  /** Landing Zone: the shipyard is gated behind an earned, built Foundry.
+   * Seeded true until the Foundry structure exists as a buildable (see
+   * TODO(Phase 16) in createNewGame) — then it becomes earned-by-construction. */
+  FOUNDRY_BUILT: 'landingZone.foundryBuilt',
   FIRST_SCAN: 'progress.firstScan',
   FIRST_MINE: 'progress.firstMine',
   FIRST_REFINE: 'progress.firstRefine',

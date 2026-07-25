@@ -19,6 +19,9 @@ import { ChunkedTerrain } from '../terrain/chunkManager';
 import { BALANCE } from '../config/balance';
 import { nodeCountFor, rollCollapse, rollYield } from './nodeLayout';
 import { buildSiteLayout, clusterForNode, jitterInCluster, type SiteLayout, type LandmarkKind } from './siteLayout';
+import { BaseView } from '../base/baseView';
+import { storageCapacity } from '../base/structures';
+import { unitCap } from '../base/power';
 import { poiDef, type PoiDef } from '../exploration/starSystem';
 import { deriveStats, travelCost, type ShipStats } from '../building/shipStats';
 import { distanceBetween } from '../exploration/starSystem';
@@ -32,6 +35,7 @@ import { rigTypeFor } from './rigs';
 import { PLAYER_RADIUS, PlayerController, type Collider } from '../interior/playerController';
 import { bar, box, button, clearPanel, el, hazardTag } from '../ui/panels';
 import { toast } from '../ui/hud';
+import { Minimap } from '../ui/minimap';
 import type { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 type FootTarget =
@@ -71,11 +75,16 @@ export class SurfaceScreen implements GameScreen {
   private terrain: ChunkedTerrain | null = null;
   private rand: () => number = Math.random;
   private layout: SiteLayout | null = null;
+  /** Landing Zone delegate — exists only while the active site is the home base */
+  private baseView: BaseView | null = null;
+  private minimap: Minimap;
+  private minimapTimer = 0;
   private nodeMeshes = new Map<string, THREE.Group>();
   private rigMeshes = new Map<string, THREE.Group>();
   private rigs: ActiveRig[] = [];
   private zones: Zone[] = [];
   private armedRig: RigType | null = null;
+  private storageFullSaid = false;
   private stats!: ShipStats;
   private def!: PoiDef;
   private excursion = 0;
@@ -94,16 +103,32 @@ export class SurfaceScreen implements GameScreen {
   private footTarget: FootTarget | null = null;
   private wasInZone = false;
   private landerPos = { x: 2, z: 2 };
+  /** held WASD/arrow keys — RTS keyboard pan, consumed in command mode only */
+  private panKeys = new Set<string>();
+  private static readonly PAN_CODES = new Set([
+    'KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
+  ]);
   private keyHandler = (ev: KeyboardEvent): void => {
     if (ev.code === 'Tab') {
       ev.preventDefault();
       this.setMode(this.mode === 'command' ? 'foot' : 'command');
     } else if (ev.code === 'KeyE' && this.mode === 'foot' && this.footTarget) {
       this.interactFoot(this.footTarget);
+    } else if (ev.code === 'KeyH' && this.mode === 'command') {
+      this.centerOnLander();
+    } else if (ev.code === 'Escape') {
+      this.baseView?.cancelArming();
+    }
+    if (SurfaceScreen.PAN_CODES.has(ev.code)) {
+      this.panKeys.add(ev.code);
+      if (this.mode === 'command' && ev.code.startsWith('Arrow')) ev.preventDefault();
     }
   };
+  private keyUpHandler = (ev: KeyboardEvent): void => {
+    this.panKeys.delete(ev.code);
+  };
 
-  constructor(private ctx: Ctx, canvas: HTMLCanvasElement) {
+  constructor(private ctx: Ctx, private canvas: HTMLCanvasElement) {
     const cam = BALANCE.surface.camera;
     this.camera = makeCamera(50);
     this.camera.position.set(20, 24, 20);
@@ -111,9 +136,19 @@ export class SurfaceScreen implements GameScreen {
       target: [0, 0, 0],
       minDistance: cam.minDistance,
       maxDistance: cam.maxDistance,
+      minPolar: Math.PI * cam.minPolarFrac,
       maxPolar: Math.PI * cam.maxPolarFrac,
       enablePan: true,
     });
+    // RTS-style command camera: dragging moves you across the map (the thing
+    // you do constantly); rotation is the exception, on the right button.
+    // Pitch is clamped to an overhead band above, so the view can never
+    // degrade into a near-horizontal "first person but far away" angle.
+    this.controls.mouseButtons = {
+      LEFT: THREE.MOUSE.PAN,
+      MIDDLE: THREE.MOUSE.DOLLY,
+      RIGHT: THREE.MOUSE.ROTATE,
+    };
     // pan across the site, not across the screen plane
     this.controls.screenSpacePanning = false;
     addBasicLights(this.scene);
@@ -124,6 +159,9 @@ export class SurfaceScreen implements GameScreen {
     this.prompt = el('div', 'interact-prompt');
     this.prompt.style.display = 'none';
     document.getElementById('hud')!.appendChild(this.prompt);
+
+    this.minimap = new Minimap();
+    this.minimap.onJump = (x, z) => this.centerOn(x, z);
   }
 
   enter(): void {
@@ -143,11 +181,17 @@ export class SurfaceScreen implements GameScreen {
     this.controller.position.set(this.landerPos.x + 3, 0, this.landerPos.z + 3);
     this.controller.yaw = Math.PI * 0.75; // facing back toward the lander/site
     window.addEventListener('keydown', this.keyHandler);
+    window.addEventListener('keyup', this.keyUpHandler);
+    this.minimap.show();
+    this.minimapTimer = 999; // draw on the first frame
     this.panelSig = null;
   }
 
   exit(): void {
     window.removeEventListener('keydown', this.keyHandler);
+    window.removeEventListener('keyup', this.keyUpHandler);
+    this.panKeys.clear();
+    this.minimap.hide();
     if (this.mode === 'foot') this.controller.detach();
     this.mode = 'command';
     this.controls.enabled = true;
@@ -174,6 +218,8 @@ export class SurfaceScreen implements GameScreen {
       if (m.material) (Array.isArray(m.material) ? m.material : [m.material]).forEach((x) => x.dispose());
     });
     this.site.clear();
+    this.baseView?.dispose();
+    this.baseView = null;
     this.terrain?.dispose();
     this.terrain = null;
     this.nodeMeshes.clear();
@@ -237,6 +283,14 @@ export class SurfaceScreen implements GameScreen {
       if (fp > 0) {
         this.footColliders.push({ minX: lm.x - fp, maxX: lm.x + fp, minZ: lm.z - fp, maxZ: lm.z + fp });
       }
+    }
+
+    // Landing Zone: the BaseView delegate owns all home-base meshes/logic on
+    // this same live scene — base-building phases grow in src/base/, not here
+    if (this.def.special === 'home') {
+      this.baseView = new BaseView(this.ctx, this.scene, terrain, this.footColliders, this.camera, this.canvas, {
+        isCommand: () => this.mode === 'command',
+      });
     }
 
     if (this.def.special === 'anomaly') {
@@ -378,6 +432,7 @@ export class SurfaceScreen implements GameScreen {
   private setMode(mode: 'command' | 'foot'): void {
     if (mode === this.mode) return;
     this.mode = mode;
+    this.panKeys.clear();
     if (mode === 'foot') {
       // drop in where the command camera is looking — on a site this size,
       // walking out from the lander every time would make foot mode useless
@@ -401,6 +456,79 @@ export class SurfaceScreen implements GameScreen {
       this.footTarget = null;
     }
     this.renderPanel();
+  }
+
+  /** throttled minimap redraw from live site state */
+  private updateMinimap(dt: number): void {
+    this.minimapTimer += dt;
+    if (this.minimapTimer < BALANCE.surface.minimap.updateSec) return;
+    this.minimapTimer = 0;
+    const poi = this.ctx.store.poi(this.def.id);
+    const charted = new Set(poi.charted);
+    this.minimap.update({
+      nodes: (poi.nodes ?? [])
+        .filter((n) => n.remaining > 0)
+        .map((n) => ({ x: n.x, z: n.z, color: RESOURCES[n.resource].color })),
+      landmarks: (this.layout?.landmarks ?? []).map((lm) => ({ x: lm.x, z: lm.z, charted: charted.has(lm.id) })),
+      rigs: [...this.rigMeshes.values()].map((m) => ({ x: m.position.x, z: m.position.z })),
+      structures:
+        this.def.special === 'home'
+          ? this.ctx.store.state.base.structures.filter((s) => s.status !== 'destroyed').map((s) => ({ x: s.x, z: s.z }))
+          : [],
+      lander: this.landerPos,
+      focus:
+        this.mode === 'command'
+          ? { x: this.controls.target.x, z: this.controls.target.z }
+          : { x: this.controller.position.x, z: this.controller.position.z },
+      foot: this.mode === 'foot' ? { x: this.controller.position.x, z: this.controller.position.z } : null,
+    });
+  }
+
+  /** RTS keyboard pan: WASD/arrows slide camera + target across the ground plane */
+  private keyboardPan(dt: number): void {
+    if (this.panKeys.size === 0) return;
+    let fwd = 0;
+    let right = 0;
+    if (this.panKeys.has('KeyW') || this.panKeys.has('ArrowUp')) fwd += 1;
+    if (this.panKeys.has('KeyS') || this.panKeys.has('ArrowDown')) fwd -= 1;
+    if (this.panKeys.has('KeyD') || this.panKeys.has('ArrowRight')) right += 1;
+    if (this.panKeys.has('KeyA') || this.panKeys.has('ArrowLeft')) right -= 1;
+    if (fwd === 0 && right === 0) return;
+    // camera-relative ground axes; speed scales with zoom so far-out panning covers ground
+    const az = this.controls.getAzimuthalAngle();
+    const fx = -Math.sin(az);
+    const fz = -Math.cos(az);
+    const dist = this.camera.position.distanceTo(this.controls.target);
+    const speed = (BALANCE.surface.camera.keyPanSpeed * Math.max(0.4, dist / 30) * dt) / Math.hypot(fwd, right);
+    const dx = (fx * fwd - fz * right) * speed;
+    const dz = (fz * fwd + fx * right) * speed;
+    const half = BALANCE.surface.siteHalfExtent;
+    const t = this.controls.target;
+    const nx = THREE.MathUtils.clamp(t.x + dx, -half, half);
+    const nz = THREE.MathUtils.clamp(t.z + dz, -half, half);
+    this.camera.position.x += nx - t.x;
+    this.camera.position.z += nz - t.z;
+    t.x = nx;
+    t.z = nz;
+  }
+
+  /** total resources held in the base stockpile (raw + refined) */
+  private stockTotal(): number {
+    return Object.values(this.ctx.store.state.stock).reduce((a, b) => a + b, 0);
+  }
+
+  /** jump the command camera back to the lander, keeping the current zoom/angle */
+  private centerOnLander(): void {
+    this.centerOn(this.landerPos.x, this.landerPos.z);
+  }
+
+  private centerOn(x: number, z: number): void {
+    if (this.mode !== 'command') return;
+    const half = BALANCE.surface.siteHalfExtent;
+    const off = this.camera.position.clone().sub(this.controls.target);
+    this.controls.target.set(THREE.MathUtils.clamp(x, -half, half), 0, THREE.MathUtils.clamp(z, -half, half));
+    this.camera.position.copy(this.controls.target).add(off);
+    this.controls.update();
   }
 
   /** nearest spot not inside a collider — so a foot-drop can't spawn stuck in a rock */
@@ -442,9 +570,14 @@ export class SurfaceScreen implements GameScreen {
 
   // ---- interaction ----
 
-  onClick(ndc: THREE.Vector2): void {
+  onClick(ndc: THREE.Vector2, ev: PointerEvent): void {
     if (this.mode === 'foot') return; // command clicks don't exist on foot
     this.raycaster.setFromCamera(ndc, this.camera);
+
+    // Landing Zone: structure selection/placement gets first claim on the
+    // click; the rig flow below stays exactly as-is for away-sites
+    if (this.baseView?.onCommandClick(this.raycaster, ev.button)) return;
+    if (ev.button !== 0) return; // rig deploy/recall is left-click only
 
     // recall a rig by clicking it
     if (!this.armedRig) {
@@ -488,6 +621,12 @@ export class SurfaceScreen implements GameScreen {
   }
 
   private deployRig(type: RigType, node: NodeState): void {
+    // power/supply cap: at the base, only so many rigs+drones run at once
+    // (raised by Power Relays). Away-sites run off ship power — no cap.
+    if (this.def.special === 'home' && this.rigs.length >= unitCap(this.ctx.store.state.base.structures)) {
+      toast('Power capacity reached — build a Power Relay', 'warn');
+      return;
+    }
     const rig: ActiveRig = { id: this.ctx.store.uid('r'), type, nodeId: node.id, integrity: 100, paused: false, buffer: 0 };
     this.rigs.push(rig);
     const mesh = buildRigDeployed(type);
@@ -634,6 +773,7 @@ export class SurfaceScreen implements GameScreen {
     this.t += dt;
     this.excursion += dt;
     if (this.mode === 'command') {
+      this.keyboardPan(dt);
       this.controls.update();
       // keep the pan target on the site, and stream terrain around it
       const half = BALANCE.surface.siteHalfExtent;
@@ -647,6 +787,8 @@ export class SurfaceScreen implements GameScreen {
       this.terrain?.update(this.controller.position.x, this.controller.position.z);
       this.checkDiscovery(this.controller.position.x, this.controller.position.z);
     }
+    this.baseView?.update(dt);
+    this.updateMinimap(dt);
     const store = this.ctx.store;
     const poi = store.poi(this.def.id);
     const nodes = poi.nodes ?? [];
@@ -655,22 +797,46 @@ export class SurfaceScreen implements GameScreen {
       const node = nodes.find((n) => n.id === rig.nodeId);
       if (!node) continue;
 
-      // extraction into the hold, one whole unit at a time (paused rigs idle)
+      // extraction one whole unit at a time (paused rigs idle). At the home
+      // site units feed the base stockpile directly — there is no ship-hold
+      // round trip at your own landing zone (nothing unloads the hold here,
+      // and Landing Zone's drone loops will bank straight to stock the same
+      // way). Away-sites keep the hold/cargo logistics unchanged.
       const unit = tickExtraction(rig, node, dt);
       if (unit > 0) {
-        const added = store.addCargo(node.resource, 1, this.stats.cargoCap);
-        if (added > 0) {
-          node.remaining -= 1;
-          this.cargoFullSaid = false;
-          if (!store.hasFlag(FLAGS.FIRST_MINE)) {
-            store.setFlag(FLAGS.FIRST_MINE);
-            store.bus.emit('mine:extracted', { resource: node.resource, amount: 1 });
+        if (this.def.special === 'home') {
+          // base storage cap: mining stalls (holds in the hopper) when the
+          // on-site stockpile is full, until a Storage Silo raises the cap
+          if (this.stockTotal() >= storageCapacity(store.state.base.structures)) {
+            rig.buffer += 1;
+            if (!this.storageFullSaid) {
+              this.storageFullSaid = true;
+              toast('Storage full — build a Storage Silo', 'warn');
+            }
+          } else {
+            store.addStock(node.resource, 1);
+            node.remaining -= 1;
+            this.storageFullSaid = false;
+            if (!store.hasFlag(FLAGS.FIRST_MINE)) {
+              store.setFlag(FLAGS.FIRST_MINE);
+              store.bus.emit('mine:extracted', { resource: node.resource, amount: 1 });
+            }
           }
         } else {
-          rig.buffer += 1; // hold it in the hopper until there's room
-          if (!this.cargoFullSaid) {
-            this.cargoFullSaid = true;
-            store.bus.emit('cargo:full', {});
+          const added = store.addCargo(node.resource, 1, this.stats.cargoCap);
+          if (added > 0) {
+            node.remaining -= 1;
+            this.cargoFullSaid = false;
+            if (!store.hasFlag(FLAGS.FIRST_MINE)) {
+              store.setFlag(FLAGS.FIRST_MINE);
+              store.bus.emit('mine:extracted', { resource: node.resource, amount: 1 });
+            }
+          } else {
+            rig.buffer += 1; // hold it in the hopper until there's room
+            if (!this.cargoFullSaid) {
+              this.cargoFullSaid = true;
+              store.bus.emit('cargo:full', {});
+            }
           }
         }
       }
@@ -748,7 +914,9 @@ export class SurfaceScreen implements GameScreen {
         .map(([k]) => k)
         .join(',') +
       '~' +
-      poi.charted.length;
+      poi.charted.length +
+      '$' +
+      (this.baseView?.panelSig() ?? '');
     if (sig !== this.panelSig) {
       this.panelSig = sig;
       this.renderPanel();
@@ -781,6 +949,8 @@ export class SurfaceScreen implements GameScreen {
     site.appendChild(modeBtn);
     if (this.mode === 'foot') {
       site.appendChild(el('div', 'sub', 'WASD walk · mouse/arrows look · E interact. Same site, same clocks — nothing paused because you got out.'));
+    } else {
+      site.appendChild(button('Center on lander  [H]', () => this.centerOnLander()));
     }
     site.appendChild(button('Board ship', () => this.ctx.nav('interior')));
 
@@ -797,6 +967,9 @@ export class SurfaceScreen implements GameScreen {
       }
     }
 
+    // Landing Zone: build menu / inspector / production panels
+    this.baseView?.renderPanel();
+
     if (this.def.special === 'anomaly') {
       const info = box('Site Null');
       info.appendChild(el('p', 'sub', 'Nothing here wants anything from you. That is somehow worse. The structures predate every catalogue GERTY holds — and one of them is still drawing power.'));
@@ -804,41 +977,60 @@ export class SurfaceScreen implements GameScreen {
       return;
     }
 
-    // hold — with per-resource jettison so a bad mix isn't a wasted trip
-    const hold = box('Hold');
-    const holdBar = bar(0, 'var(--accent)');
-    hold.appendChild(holdBar);
-    const holdLabel = el('div', 'sub');
-    hold.appendChild(holdLabel);
-    this.panelUpdaters.push(() => {
-      const total = store.cargoTotal();
-      (holdBar.firstElementChild as HTMLElement).style.width = `${Math.round((total / Math.max(1, this.stats.cargoCap)) * 100)}%`;
-      holdLabel.textContent = `${Math.round(total)} / ${this.stats.cargoCap}`;
-    });
-    for (const [res, amount] of Object.entries(store.state.cargo)) {
-      if (amount <= 0) continue;
-      const id = res as RawResourceId;
-      const row = el('div', 'row');
-      const name = el('span', 'grow', RESOURCES[id].name);
-      name.style.fontSize = '12px';
-      row.appendChild(name);
-      const amt = el('span', undefined, String(Math.round(amount)));
+    if (this.def.special === 'home') {
+      // no ship-hold logistics at your own landing zone — extraction banks
+      // straight to the base stockpile, up to the base's storage capacity
+      const stockNote = box('Base Storage');
+      const capBar = bar(0, 'var(--accent)');
+      stockNote.appendChild(capBar);
+      const capLabel = el('div', 'sub');
+      stockNote.appendChild(capLabel);
       this.panelUpdaters.push(() => {
-        amt.textContent = String(Math.round(store.state.cargo[id] ?? 0));
+        const used = this.stockTotal();
+        const cap = storageCapacity(store.state.base.structures);
+        const inner = capBar.firstElementChild as HTMLElement;
+        const frac = used / Math.max(1, cap);
+        inner.style.width = `${Math.min(100, Math.round(frac * 100))}%`;
+        inner.style.background = frac >= 1 ? 'var(--red)' : frac > 0.85 ? 'var(--amber)' : 'var(--accent)';
+        capLabel.textContent = `${Math.round(used)} / ${cap} · mining banks here; build silos to expand`;
       });
-      row.appendChild(amt);
-      const dumpOne = button('▼1', () => {
-        if (store.dumpCargo(id, 1) > 0) toast(`Jettisoned 1 ${RESOURCES[id].name.toLowerCase()}`, 'info');
+    } else {
+      // hold — with per-resource jettison so a bad mix isn't a wasted trip
+      const hold = box('Hold');
+      const holdBar = bar(0, 'var(--accent)');
+      hold.appendChild(holdBar);
+      const holdLabel = el('div', 'sub');
+      hold.appendChild(holdLabel);
+      this.panelUpdaters.push(() => {
+        const total = store.cargoTotal();
+        (holdBar.firstElementChild as HTMLElement).style.width = `${Math.round((total / Math.max(1, this.stats.cargoCap)) * 100)}%`;
+        holdLabel.textContent = `${Math.round(total)} / ${this.stats.cargoCap}`;
       });
-      dumpOne.title = 'Jettison one unit';
-      row.appendChild(dumpOne);
-      const dumpAll = button('▼ all', () => {
-        const n = store.dumpCargo(id, Infinity);
-        if (n > 0) toast(`Jettisoned ${Math.round(n)} ${RESOURCES[id].name.toLowerCase()}`, 'warn');
-      });
-      dumpAll.title = 'Jettison everything of this';
-      row.appendChild(dumpAll);
-      hold.appendChild(row);
+      for (const [res, amount] of Object.entries(store.state.cargo)) {
+        if (amount <= 0) continue;
+        const id = res as RawResourceId;
+        const row = el('div', 'row');
+        const name = el('span', 'grow', RESOURCES[id].name);
+        name.style.fontSize = '12px';
+        row.appendChild(name);
+        const amt = el('span', undefined, String(Math.round(amount)));
+        this.panelUpdaters.push(() => {
+          amt.textContent = String(Math.round(store.state.cargo[id] ?? 0));
+        });
+        row.appendChild(amt);
+        const dumpOne = button('▼1', () => {
+          if (store.dumpCargo(id, 1) > 0) toast(`Jettisoned 1 ${RESOURCES[id].name.toLowerCase()}`, 'info');
+        });
+        dumpOne.title = 'Jettison one unit';
+        row.appendChild(dumpOne);
+        const dumpAll = button('▼ all', () => {
+          const n = store.dumpCargo(id, Infinity);
+          if (n > 0) toast(`Jettisoned ${Math.round(n)} ${RESOURCES[id].name.toLowerCase()}`, 'warn');
+        });
+        dumpAll.title = 'Jettison everything of this';
+        row.appendChild(dumpAll);
+        hold.appendChild(row);
+      }
     }
 
     // rigs

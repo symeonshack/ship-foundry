@@ -52,7 +52,7 @@ Massive persistent universe across many solar systems and servers, discovering o
 - Deployable rigs matched to site hazard profiles.
 - Cargo/fuel-limited hauling creates logistics decisions.
 - Raw → refined → buildable, in the Minecraft/Age-of-Empires sense but grounded in plausible materials (ices, regolith, alloys, exotic gases).
-- **Hybrid surface exploration — two perspectives on one live site, not two separate modes.** A top-down "set it and monitor" view (Age of Empires-style) lets the player direct rigs/drones, assign haul routes, and watch extraction happen at a glance. At any point, the player can drop directly into that same live site in first/third-person to walk around, inspect things closely, or handle something a rig can't. Switching is a camera/control swap over the same persistent scene and simulation state — not a level reload or a separate mode. (Closest real-world precedent: *Battlezone* (1998/2016), which lets players command units from an overhead view and also drive a vehicle first-person on the same live battlefield.) This is a genuine scope increase over either pure version — both control schemes operate against the same underlying world state — but it maps well onto real engineering instinct: survey the big picture, then get hands-on with the specific problem.
+- **Hybrid top-down/on-foot surface exploration — currently scoped as top-down only.** A top-down "set it and monitor" view (Age of Empires-style) lets the player direct rigs/drones, assign haul routes, and watch extraction happen at a glance — this is the active mode for Operation Site #1 and the near-term focus (see `mining-operations-build-spec.md`). First/third-person on-foot exploration is **not** a free-roam layer over the whole site; it's reserved for specific, contained key areas a site might reveal (e.g., an ancient dig site chamber), not built as general capability this round. When a site does include a key area, switching into it should still be a camera/control swap over shared world state — not a level reload — but scoped to that specific revealed space, not the open map. (Precedent for the swap mechanic itself: *Battlezone* (1998/2016), which lets players command units from an overhead view and also drive a vehicle first-person on the same live battlefield — the mechanic still applies, just at contained-area scale rather than whole-map scale.)
 
 ### 4. Companion AI (GERTY-style)
 - Present from minute one; dry, understated, genuinely helpful (flags hazards beyond current equipment ratings, offers hints, narrates discoveries).
@@ -124,8 +124,7 @@ Not part of v1. Layered on top of the working scripted/state-machine baseline as
 - Companion AI with placeholder narrative hooks (generic "won't answer that yet" states), with a physical in-ship presence rather than a floating chat box.
 - Walkable ship interior with a diegetic star-map console (replacing the top-of-screen map UI).
 - Real ship travel (third-person flight or seated first-person piloting) and a landing sequence, replacing instant teleport-to-destination.
-- Hybrid top-down/on-foot surface exploration on at least one site, demonstrating the camera/control-swap mechanic over shared world state.
-- At least one collaborative-leaning and one hostile-but-nonlethal agent, demonstrating the personality spectrum, plus basic tool-based environmental interaction in at least one structure.
+- Operation Site #1, top-down only for this round (see `mining-operations-build-spec.md` Current Round Scope) — general on-foot surface exploration and the Agent Personality Spectrum are tabled, not part of this round's V1 target.
 - Single-player only.
 
 ## Next Iteration — Implementation Sequence
@@ -146,21 +145,15 @@ This section is written to be handed to Fable directly as the build prompt, one 
 - Add a landing sequence on arrival at a planet/asteroid (full ship, or a separate lander if simpler to implement first) — tie heat/stability feedback during entry to the existing hazard system.
 - **Acceptance check:** selecting a destination triggers a flight sequence the player controls or watches, ending in an explicit landing, rather than instant arrival.
 
-### Phase 3: Hybrid Top-Down/On-Foot Surface Exploration
+### Phase 3: Hybrid Top-Down/On-Foot Surface Exploration [TABLED for this round]
 
-- On arrival at a site, support two camera/control modes over the same live scene: a top-down command mode (assign rigs/drones, monitor extraction, Age of Empires-style) and a first/third-person on-foot mode (walk around, inspect, interact directly) — see Mining & Resources above for the full description.
-- Implement mode switching as a camera/control swap over shared world state — not a scene reload or separate level.
-- Reuse the character controller built in Phase 1.
-- **Acceptance check:** player can freely switch between commanding rigs from the top-down view and walking around the same site in person, with consistent, shared world state in both modes.
+Superseded by `mining-operations-build-spec.md`'s active Implementation Sequence, which covers Operation Site #1 as top-down only for now. On-foot exploration returns as "contained key area" scope only, when a site design calls for it — not general free-roam capability. Do not build general on-foot walkability this round.
 
-### Phase 4: Alien-Isolation-Inspired First-Person Systems + Agent Personality Spectrum
+### Phase 4: Alien-Isolation-Inspired First-Person Systems + Agent Personality Spectrum [TABLED for this round]
 
-- Build out tactile environmental interaction in first-person areas (ship interior, surface structures): usable consoles/panels, found tools that unlock specific interactions (e.g., a cutting tool opens a sealed door), and simple crafting/combination of found components.
-- Extend the existing single collaborator agent into the full personality spectrum: implement at least one collaborative-leaning agent and one obstructive/hostile-leaning agent, each with behavior driven by its own in-fiction directive.
-- Hostile-leaning agent behavior is limited to non-lethal obstruction (sealing doors, cutting power, venting hazards, sounding alarms, forcing retreat) — no weapons, no combat, no player death from an agent encounter, ever.
-- Let the player gauge an agent's disposition via the existing scan mechanic plus environmental clues (logs, agent design/location) before engaging.
-- Build at least one "outsmart, don't fight" resolution for the hostile-leaning agent (exploiting its literal directive, rerouting a system, using a found tool, or evasion).
-- **Acceptance check:** player can explore a structure using found tools/logs to solve an environmental problem, and separately encounter both a collaborative agent and a hostile-but-nonlethal agent whose behavior can be understood and outsmarted — with no combat system existing anywhere in the game.
+Depends on both agents (tabled — Operation Site #1 has no agent threat) and general first-person environmental interaction (tabled — see Phase 3 note above). Fully designed, not part of this round.
+
+**Current active plan:** for the present round, follow `mining-operations-build-spec.md`'s Implementation Sequence (Group A onward) instead of this document's Phase 3/4 — that document reflects the current, narrowed scope (Operation Site #1 only) and supersedes these two phases here. Phases 1 and 2 above (ship interior/GERTY/map, real travel/landing) are unaffected and remain active.
 
 **How to use this section:** paste one phase's instructions (plus this section's opening paragraph for context) into Claude Code/Fable as its own prompt. Confirm the acceptance check passes before moving to the next phase's prompt.
 

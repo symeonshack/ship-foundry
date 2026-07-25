@@ -34,12 +34,17 @@ export function tickExtraction(rig: ActiveRig, node: { remaining: number }, dt: 
   return 1;
 }
 
+/** resources the drill rig works — includes Landing Zone's high-grade ore and
+ * isotope deposits: the starting rig's shielding is sufficient for these
+ * small on-site deposits specifically, so no new rig type is needed */
+const DRILL_RESOURCES: RawResourceId[] = ['regolith', 'ore', 'oreHigh', 'isotope'];
+
 export function rigCanMine(type: RigType, resource: RawResourceId): boolean {
-  return type === 'drill' ? resource === 'regolith' || resource === 'ore' : resource === 'ice' || resource === 'gas';
+  return type === 'drill' ? DRILL_RESOURCES.includes(resource) : resource === 'ice' || resource === 'gas';
 }
 
 export function rigTypeFor(resource: RawResourceId): RigType {
-  return resource === 'regolith' || resource === 'ore' ? 'drill' : 'cryo';
+  return DRILL_RESOURCES.includes(resource) ? 'drill' : 'cryo';
 }
 
 /** integrity % lost per second under a hazard, given ship equipment ratings */

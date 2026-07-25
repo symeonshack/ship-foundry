@@ -110,7 +110,8 @@ html, body {
   top: 56px;
   right: 12px;
   width: 300px;
-  max-height: calc(100% - 200px);
+  /* keep clear of the minimap (bottom-right, 160px + margins) */
+  max-height: calc(100% - 248px);
   overflow-y: auto;
   display: flex;
   flex-direction: column;
