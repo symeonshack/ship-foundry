@@ -144,6 +144,15 @@ export const BALANCE = {
       /** each active Storage Silo raises the cap by this much */
       perSilo: 60,
     },
+    /**
+     * Ambient pressure — the opening tension: fuel drains continuously until
+     * solar power + an on-site refinery + storage are all standing. Once
+     * relieved it stays relieved until something takes one of those three
+     * back out (a future hazard, or dev-damage today).
+     */
+    pressure: {
+      fuelDrainPerSec: 0.08,
+    },
     /** supply cap: how many rigs+drones the base can run at once (StarCraft-style) */
     power: {
       /** runnable from the base alone, before any Power Relay */
@@ -163,6 +172,11 @@ export const BALANCE = {
         dustMaxDerate: 0.6,
         /** a Clean action clears full dust in this long; the array is offline meanwhile */
         cleanTimeSec: 8,
+      },
+      /** steady power for as long as the isotopes hold out — no day/night dip, no dust */
+      nuclear: {
+        /** isotope units burned per second, per active generator */
+        isotopeBurnPerSec: 0.02,
       },
     },
   },

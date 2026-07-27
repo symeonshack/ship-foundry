@@ -120,7 +120,7 @@ html, body {
   font-size: 12px;
   white-space: nowrap;
 }
-.chip .dot { width: 8px; height: 8px; border-radius: 50%; }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
 .chip .amt { color: var(--text); min-width: 2ch; text-align: right; }
 .chip.raw .name { color: var(--dim); }
 
@@ -144,6 +144,16 @@ html, body {
   font-size: 11px;
   letter-spacing: 0.14em;
   animation: dev-pulse 2s infinite;
+}
+#drain-badge {
+  padding: 1px 8px;
+  border: 1px solid var(--red);
+  border-radius: 4px;
+  color: var(--red);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  animation: dev-pulse 2s infinite;
+  white-space: nowrap;
 }
 @keyframes dev-pulse { 50% { opacity: 0.45; } }
 #nav { margin-left: auto; display: flex; gap: 6px; }
@@ -314,6 +324,8 @@ html, body {
 .log-entry p { margin: 0; font-size: 13px; color: var(--dim); line-height: 1.5; }
 .log-entry .ask { margin-top: 6px; }
 .log-entry .ask button { font-size: 12px; padding: 3px 10px; }
+.guide-heading { margin: 14px 0 2px; font-size: 13px; }
+.guide-heading:first-of-type { margin-top: 4px; }
 
 /* ---- interior: interaction prompt + GERTY speech bubble ---- */
 .interact-prompt {
@@ -339,6 +351,20 @@ html, body {
   border-radius: 4px;
   color: var(--accent);
   font-weight: 600;
+}
+
+.hover-tip {
+  position: absolute;
+  z-index: 15;
+  background: var(--panel-solid);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  color: var(--text);
+  pointer-events: none;
+  white-space: nowrap;
 }
 
 #gerty-bubble {

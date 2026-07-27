@@ -1,10 +1,20 @@
 import type { Ctx } from '../core/ctx';
-import { ALL_RESOURCE_IDS, RESOURCES, resourceGroupLabel, resourceGroupsForDisplay, type RawResourceId } from '../core/resources';
+import {
+  ALL_RESOURCE_IDS,
+  costToString,
+  RECIPES,
+  RESOURCES,
+  resourceGroupLabel,
+  resourceGroupsForDisplay,
+  type RawResourceId,
+} from '../core/resources';
 import { deriveStats } from '../building/shipStats';
 import { poiDef } from '../exploration/starSystem';
 import { listCheckpoints, restoreCheckpoint, wipeAll } from '../save/persistence';
 import { FLAGS } from '../core/flags';
 import { ITEM_NAMES } from '../structure/layout';
+import { pressureActive } from '../base/baseSim';
+import { STRUCTURE_IDS, STRUCTURES } from '../base/structures';
 import { el } from './panels';
 import type { SpokenLine } from '../companion/gerty';
 import type { ScreenId } from '../core/events';
@@ -44,6 +54,7 @@ export class Hud {
   private modal: HTMLElement;
   private hint: HTMLElement;
   private devBadge: HTMLElement;
+  private drainBadge: HTMLElement;
   private activeScreen: ScreenId = 'interior';
 
   constructor(private ctx: Ctx) {
@@ -89,6 +100,12 @@ export class Hud {
     fuelWrap.appendChild(this.fuelLabel);
     top.appendChild(fuelWrap);
 
+    this.drainBadge = el('span', undefined, 'LIFE-SUPPORT DRAIN');
+    this.drainBadge.id = 'drain-badge';
+    this.drainBadge.title = 'Ambient pressure: fuel drains continuously until solar power, an on-site refinery, and storage are all standing at the Landing Zone.';
+    this.drainBadge.style.display = 'none';
+    top.appendChild(this.drainBadge);
+
     this.location = el('span');
     this.location.id = 'location';
     top.appendChild(this.location);
@@ -114,6 +131,8 @@ export class Hud {
       ctx.nav(def.special === 'signal' ? 'encounter' : 'surface');
     });
     addNav('log', 'LOG', () => this.openLogbook());
+    addNav('guide', 'GUIDE', () => this.openGuide());
+    this.navButtons.get('guide')!.title = 'Resource & structure reference: recipes, costs, and what needs what.';
     addNav('reset', '⟲', () => this.openSaves());
     this.navButtons.get('reset')!.classList.add('danger');
     this.navButtons.get('reset')!.title = 'Saves & checkpoints';
@@ -211,6 +230,7 @@ export class Hud {
     const def = poiDef(s.currentPoi);
     this.location.textContent = `SITE • ${def.name.toUpperCase()}`;
     this.devBadge.style.display = this.ctx.store.hasFlag(FLAGS.DEV_MODE) ? '' : 'none';
+    this.drainBadge.style.display = pressureActive(s.base.structures) ? '' : 'none';
 
     const atHome = s.currentPoi === 'foundry';
     const inFlight = this.activeScreen === 'flight';
@@ -314,6 +334,85 @@ export class Hud {
       }
       card.appendChild(div);
     }
+    const close = el('button', undefined, 'Close') as HTMLButtonElement;
+    close.style.marginTop = '12px';
+    close.addEventListener('click', () => this.modal.classList.remove('open'));
+    card.appendChild(close);
+    this.modal.replaceChildren(card);
+    this.modal.classList.add('open');
+  }
+
+  /** every resource's recipe/use, and every structure's cost/prereqs, in one place */
+  openGuide(): void {
+    const card = el('div', 'modal-card');
+    card.appendChild(el('h2', undefined, 'Resource & Structure Guide'));
+    card.appendChild(el('p', 'sub', 'What everything is, what it turns into, and what it costs to build.'));
+
+    const sectionHeading = (text: string): void => {
+      const h = el('div', 'resource-group-label guide-heading', text);
+      card.appendChild(h);
+    };
+
+    sectionHeading('Resources');
+    for (const group of resourceGroupsForDisplay()) {
+      card.appendChild(el('div', 'resource-group-label', group.label));
+      for (const id of group.ids) {
+        const def = RESOURCES[id];
+        const row = el('div', 'log-entry');
+        const head = el('div', 'row');
+        const dot = el('span', 'dot');
+        dot.style.background = `#${def.color.toString(16).padStart(6, '0')}`;
+        head.appendChild(dot);
+        head.appendChild(el('h4', 'grow', def.name));
+        row.appendChild(head);
+        row.appendChild(el('p', undefined, def.desc));
+
+        const makesThis = RECIPES.find((r) => r.output === id);
+        const thisMakes = RECIPES.find((r) => r.input === id);
+        if (makesThis) {
+          row.appendChild(
+            el(
+              'div',
+              'meta',
+              `Made from ${makesThis.inAmount} ${RESOURCES[makesThis.input].name.toLowerCase()} → ${makesThis.outAmount} ${def.name.toLowerCase()} (${makesThis.timeSec}s at any refinery)`,
+            ),
+          );
+        }
+        if (thisMakes) {
+          // the desc already says "refines into X" in prose — add the
+          // quantitative side (batch ratio + time) instead of repeating it
+          row.appendChild(
+            el(
+              'div',
+              'meta',
+              `${thisMakes.inAmount} ${def.name.toLowerCase()} → ${thisMakes.outAmount} ${RESOURCES[thisMakes.output].name.toLowerCase()} per batch (${thisMakes.timeSec}s)`,
+            ),
+          );
+        } else if (def.kind === 'raw') {
+          row.appendChild(el('div', 'meta', 'Used directly — not refined.'));
+        }
+        const usedBy = STRUCTURE_IDS.filter((sid) => (STRUCTURES[sid].cost[id] ?? 0) > 0);
+        if (usedBy.length > 0) {
+          row.appendChild(el('div', 'meta', `Builds: ${usedBy.map((sid) => STRUCTURES[sid].name).join(', ')}`));
+        }
+        card.appendChild(row);
+      }
+    }
+
+    sectionHeading('Landing Zone Structures');
+    for (const id of STRUCTURE_IDS) {
+      const def = STRUCTURES[id];
+      const row = el('div', 'log-entry');
+      row.appendChild(el('h4', undefined, def.name));
+      const power = def.powerSupply ? ` · +${def.powerSupply} power` : def.powerDemand ? ` · −${def.powerDemand} power` : '';
+      row.appendChild(el('div', 'meta', `${costToString(def.cost)} · build ${def.buildTimeSec}s${power}`));
+      if (def.prereq.length > 0) {
+        row.appendChild(el('div', 'meta', `Requires: ${def.prereq.map((p) => STRUCTURES[p].name).join(', ')}`));
+      }
+      row.appendChild(el('p', undefined, def.desc));
+      card.appendChild(row);
+    }
+
     const close = el('button', undefined, 'Close') as HTMLButtonElement;
     close.style.marginTop = '12px';
     close.addEventListener('click', () => this.modal.classList.remove('open'));

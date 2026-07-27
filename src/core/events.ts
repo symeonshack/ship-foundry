@@ -29,6 +29,12 @@ export interface GameEvents {
   'structure:complete': { uid: string; defId: string };
   'structure:destroyed': { uid: string; defId: string };
   'structure:repaired': { uid: string; defId: string };
+  /** the ambient fuel drain stopped/resumed — solar+refinery+storage all standing or not (Phase 14) */
+  'pressure:relieved': Record<string, never>;
+  'pressure:engaged': Record<string, never>;
+  /** a nuclear generator ran dry / came back on stream (Phase 15) */
+  'power:generatorOffline': { uid: string; defId: string };
+  'power:generatorOnline': { uid: string; defId: string };
   'drone:produced': Record<string, never>;
   'drone:idle': Record<string, never>;
 

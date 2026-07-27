@@ -1,5 +1,6 @@
 import type { GameStore } from '../core/state';
 import { deriveStats } from '../building/shipStats';
+import { pressureActive } from '../base/baseSim';
 
 /**
  * Hauling logistics: the hold empties into base stock at home, and when the
@@ -11,9 +12,16 @@ export function arriveHome(store: GameStore): void {
   autoRefuel(store);
 }
 
-/** at the Foundry the tank quietly tops itself up from refined fuel stock */
+/**
+ * At the Foundry the tank quietly tops itself up from refined fuel stock —
+ * but only once the base is self-sufficient (solar + refinery + storage all
+ * active). Before that, this convenience would silently cancel out the
+ * ambient life-support drain (Phase 14) the moment any fuel sat in stock;
+ * the ship doesn't have a working automated fuel line until the base does.
+ */
 export function autoRefuel(store: GameStore): void {
   if (store.state.currentPoi !== 'foundry') return;
+  if (pressureActive(store.state.base.structures)) return;
   const stats = deriveStats(store.state.ship);
   const need = Math.min(stats.fuelCap - store.state.fuel, store.state.stock.fuel ?? 0);
   if (need > 0.01) {

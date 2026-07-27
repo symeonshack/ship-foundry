@@ -93,12 +93,26 @@ Arm a rig from the side panel, then either click a deposit (command view) or wal
 At the Foundry/Landing Zone specifically, extraction feeds the base stockpile directly (visible in the top bar) — there's no ship-hold round trip at your own site. Three base structures shape this economy:
 
 - **Storage Silo** — the base can only hold so much. The **Base Storage** bar in the side panel shows how full the stockpile is; when it's full, mining stalls (a "Storage full" warning) until you build a silo to raise the cap. (Refining raw into refined material also frees space, since it compacts 2 units into 1.)
+- **Solar Array** — your first power. A **Power** readout in the side panel shows net power (supply minus demand) and the day/night state. Solar output follows a **day/night cycle** — full at noon, nothing at night — and **dust** slowly settles on the panels, derating output over time. Select an array to see its dust level and a **Clean panels** button (costs time, not resources — the array goes offline briefly while serviced). Night and dust are the problems the Nuclear Generator later solves for good.
 - **Power Relay** — caps how many rigs (and later, drones) can run at once. Try to deploy past the cap and you're told to build a Power Relay. Each relay raises the ceiling.
 - **Refinery** — build one at the base and its refining queue appears in the side panel, letting you turn raw ore/regolith/ice into alloy/ceramic/fuel right on site (previously only possible back at the shipyard).
+- **Nuclear Generator** — the fix for both of solar's problems: steady output day or night, dust-immune, for as long as the shared **isotope** stockpile holds out (mined from the pale-green Isotope Ore deposits). It burns isotope slowly and continuously while running; select it to see live status ("Running · isotope stock N" or, in red, "OFFLINE — out of isotopes"). Running dry doesn't damage it — it just goes dark (a toast announces it either way) and resumes automatically the moment you mine more isotope. Requires a Foundry to build.
+
+**Ambient pressure:** landing is not free. A red **LIFE-SUPPORT DRAIN** badge next to the fuel gauge (top bar) means fuel is draining continuously — this only stops once a **Solar Array**, a **Refinery**, and a **Storage Silo** are all standing at once. The instant all three are up, the drain halts for good (a toast confirms it) — and if you later lose one of them, the drain resumes until it's rebuilt. Getting self-sufficient before the tank runs dry is the opening tension.
 
 ## Refinery (at the Foundry)
 
 Raw stock in, usable stock out, in real time.
+
+## Resource & Structure Guide
+
+The **GUIDE** button (top nav, reachable from anywhere) opens a full reference: every resource with its color swatch, what it's made from and what it turns into (with exact ratios and refining time), which structures need it, and — separately — every Landing Zone structure with its cost, build time, power draw/output, and prerequisites. Use it any time the economy feels opaque.
+
+On-site, deposits are color-coded but not just by color anymore:
+
+- The side panel's **Deposits Here** box lists every resource present at the site with its color swatch and name, so you can match colors to names without hovering anything.
+- **Hovering** any deposit or deployed rig in the command view shows a tooltip naming it (resource + remaining units, or rig type + integrity) — no need to arm a rig or walk up to it first.
+- **Clicking** a deposit with no rig armed also identifies it (a toast), instead of doing nothing.
 
 ## GERTY & the Discovery Log
 

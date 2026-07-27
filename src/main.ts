@@ -88,6 +88,19 @@ bus.on('structure:destroyed', ({ defId }) => {
   toast(`${STRUCTURES[defId as keyof typeof STRUCTURES].name} destroyed`, 'bad');
   saveGame(store.state);
 });
+bus.on('pressure:relieved', () => {
+  toast('Solar, refinery, and storage online — life-support drain has stopped', 'good');
+  saveGame(store.state);
+});
+bus.on('pressure:engaged', () => {
+  toast('Self-sufficiency lost — life-support is drawing on the tank again', 'bad');
+});
+bus.on('power:generatorOffline', () => {
+  toast('Nuclear Generator offline — out of isotopes', 'warn');
+});
+bus.on('power:generatorOnline', () => {
+  toast('Nuclear Generator back online', 'good');
+});
 window.addEventListener('beforeunload', () => saveGame(store.state));
 
 // rollback checkpoints at the moments worth retrying from

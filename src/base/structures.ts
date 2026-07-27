@@ -67,6 +67,9 @@ export interface StructureInstance {
   dustLevel?: number;
   /** solar arrays only: a Clean action is in progress (array offline meanwhile) */
   cleaning?: boolean;
+  /** nuclear generators only (Phase 15): false once the shared isotope stock
+   * runs dry — absent/true means running */
+  running?: boolean;
 }
 
 export const STRUCTURES: Record<StructureId, StructureDef> = {

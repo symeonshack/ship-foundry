@@ -100,6 +100,8 @@ export class SurfaceScreen implements GameScreen {
   private footColliders: Collider[] = [];
   private rigColliders = new Map<string, Collider>();
   private prompt: HTMLElement;
+  /** cursor-following identification tooltip — command mode only (foot mode has the E-prompt) */
+  private hoverTip: HTMLElement;
   private footTarget: FootTarget | null = null;
   private wasInZone = false;
   private landerPos = { x: 2, z: 2 };
@@ -160,6 +162,10 @@ export class SurfaceScreen implements GameScreen {
     this.prompt.style.display = 'none';
     document.getElementById('hud')!.appendChild(this.prompt);
 
+    this.hoverTip = el('div', 'hover-tip');
+    this.hoverTip.style.display = 'none';
+    document.getElementById('hud')!.appendChild(this.hoverTip);
+
     this.minimap = new Minimap();
     this.minimap.onJump = (x, z) => this.centerOn(x, z);
   }
@@ -196,6 +202,7 @@ export class SurfaceScreen implements GameScreen {
     this.mode = 'command';
     this.controls.enabled = true;
     this.prompt.style.display = 'none';
+    this.hoverTip.style.display = 'none';
     this.footTarget = null;
     for (const u of this.unsub) u();
     this.unsub = [];
@@ -433,6 +440,7 @@ export class SurfaceScreen implements GameScreen {
     if (mode === this.mode) return;
     this.mode = mode;
     this.panKeys.clear();
+    this.hoverTip.style.display = 'none';
     if (mode === 'foot') {
       // drop in where the command camera is looking — on a site this size,
       // walking out from the lander every time would make foot mode useless
@@ -590,6 +598,18 @@ export class SurfaceScreen implements GameScreen {
       }
     }
 
+    // no rig armed: a click on a deposit identifies it instead of doing nothing
+    if (!this.armedRig) {
+      const nodeHit = this.raycaster.intersectObjects([...this.nodeMeshes.values()], true)[0];
+      if (nodeHit) {
+        let obj: THREE.Object3D | null = nodeHit.object;
+        while (obj && !obj.userData.nodeId) obj = obj.parent;
+        const node = obj && (this.ctx.store.poi(this.def.id).nodes ?? []).find((n) => n.id === obj!.userData.nodeId);
+        if (node) toast(`${RESOURCES[node.resource].name}: about ${Math.round(node.remaining)} units in the seam`, 'info');
+        return;
+      }
+    }
+
     if (!this.armedRig || !this.terrain) return;
     const hit = this.raycaster.intersectObjects(this.terrain.group.children, false)[0];
     if (!hit) return;
@@ -618,6 +638,47 @@ export class SurfaceScreen implements GameScreen {
       return;
     }
     this.deployRig(this.armedRig, best);
+  }
+
+  /**
+   * Command-mode hover identification: since deposits are otherwise only
+   * distinguishable by color, hovering one (or a deployed rig) shows a
+   * cursor-following tooltip naming it — no click/arm required.
+   */
+  onPointerMove(ndc: THREE.Vector2, ev: PointerEvent): void {
+    if (this.mode !== 'command') return;
+    this.raycaster.setFromCamera(ndc, this.camera);
+
+    const nodeHit = this.raycaster.intersectObjects([...this.nodeMeshes.values()], true)[0];
+    if (nodeHit) {
+      let obj: THREE.Object3D | null = nodeHit.object;
+      while (obj && !obj.userData.nodeId) obj = obj.parent;
+      const node = obj && (this.ctx.store.poi(this.def.id).nodes ?? []).find((n) => n.id === obj!.userData.nodeId);
+      if (node) {
+        this.showHoverTip(`${RESOURCES[node.resource].name} · ~${Math.round(node.remaining)} units`, ev);
+        return;
+      }
+    }
+
+    const rigHit = this.raycaster.intersectObjects([...this.rigMeshes.values()], true)[0];
+    if (rigHit) {
+      let obj: THREE.Object3D | null = rigHit.object;
+      while (obj && !obj.userData.rigId) obj = obj.parent;
+      const rig = obj && this.rigs.find((r) => r.id === obj!.userData.rigId);
+      if (rig) {
+        this.showHoverTip(`${rig.type === 'drill' ? 'Drill' : 'Cryo'} rig · integrity ${Math.round(rig.integrity)}%`, ev);
+        return;
+      }
+    }
+
+    this.hoverTip.style.display = 'none';
+  }
+
+  private showHoverTip(text: string, ev: PointerEvent): void {
+    this.hoverTip.textContent = text;
+    this.hoverTip.style.left = `${ev.clientX + 16}px`;
+    this.hoverTip.style.top = `${ev.clientY + 16}px`;
+    this.hoverTip.style.display = 'block';
   }
 
   private deployRig(type: RigType, node: NodeState): void {
@@ -953,6 +1014,23 @@ export class SurfaceScreen implements GameScreen {
       site.appendChild(button('Center on lander  [H]', () => this.centerOnLander()));
     }
     site.appendChild(button('Board ship', () => this.ctx.nav('interior')));
+
+    // color legend: deposits are color-coded on the ground and the minimap,
+    // so spell out which color is which resource without needing to hover
+    const resourceIds = Object.keys(this.def.composition) as RawResourceId[];
+    if (resourceIds.length > 0) {
+      const legend = box('Deposits Here');
+      for (const id of resourceIds) {
+        const row = el('div', 'row');
+        const dot = el('span', 'dot');
+        dot.style.background = `#${RESOURCES[id].color.toString(16).padStart(6, '0')}`;
+        dot.style.flexShrink = '0';
+        row.appendChild(dot);
+        row.appendChild(el('span', 'grow', RESOURCES[id].name));
+        legend.appendChild(row);
+      }
+      legend.appendChild(el('div', 'sub', 'Hover or click a deposit on the ground to identify it.'));
+    }
 
     if (this.layout && (this.layout.clusters.length > 0 || this.layout.landmarks.length > 0)) {
       const total = this.layout.clusters.length + this.layout.landmarks.length;

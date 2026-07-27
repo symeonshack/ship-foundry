@@ -66,10 +66,40 @@ export function tickSolar(inst: StructureInstance, dt: number): void {
   }
 }
 
+// ---- nuclear ----
+
+/** a generator is running unless a tick has explicitly flagged it stopped
+ * (out of isotopes) — default running, same "absent = hasn't happened yet"
+ * convention as dust/repair/cleaning fields */
+export function isGeneratorRunning(inst: StructureInstance): boolean {
+  return inst.running !== false;
+}
+
+/**
+ * Drain one active generator's isotope draw straight from the shared stock
+ * (mutated directly, not via store.addStock, which would fire a changed()
+ * event every single frame — see baseSim's throttled-notify pattern) and
+ * flip its running flag accordingly. Returns the transition, if any, so the
+ * caller can announce it.
+ */
+export function tickNuclear(inst: StructureInstance, stock: { isotope: number }, dt: number): 'started' | 'stopped' | null {
+  if (inst.defId !== 'nuclearGenerator' || inst.status !== 'active') return null;
+  const burn = BALANCE.landingZone.power.nuclear.isotopeBurnPerSec * dt;
+  const wasRunning = isGeneratorRunning(inst);
+  if (stock.isotope > 0) {
+    stock.isotope = Math.max(0, stock.isotope - Math.min(burn, stock.isotope));
+    inst.running = true;
+    return wasRunning ? null : 'started';
+  }
+  inst.running = false;
+  return wasRunning ? 'stopped' : null;
+}
+
 // ---- net power ----
 
-/** a single active structure's live power output (solar derated by day/night +
- * dust and offline while being cleaned; other producers are flat) */
+/** a single active structure's live power output (solar derated by day/night
+ * + dust and offline while cleaning; nuclear flat while isotopes hold out;
+ * other producers are flat) */
 export function structureOutput(inst: StructureInstance, t: number): number {
   if (inst.status !== 'active') return 0;
   const supply = STRUCTURES[inst.defId].powerSupply ?? 0;
@@ -77,6 +107,9 @@ export function structureOutput(inst: StructureInstance, t: number): number {
   if (inst.defId === 'solarArray') {
     if (inst.cleaning) return 0;
     return supply * solarFactor(t) * dustDerate(inst.dustLevel ?? 0);
+  }
+  if (inst.defId === 'nuclearGenerator') {
+    return isGeneratorRunning(inst) ? supply : 0;
   }
   return supply;
 }

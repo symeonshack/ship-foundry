@@ -29,7 +29,6 @@ export class ShipyardScreen implements GameScreen {
   private stats: ShipStats;
   private t = 0;
   private unsub: (() => void) | null = null;
-  private spinTarget: THREE.Group | null = null;
   private livePanels: LivePanel[] = [];
   /** Landing Zone gate: true while there is no built Foundry (see FLAGS.FOUNDRY_BUILT) */
   private locked = false;
@@ -102,7 +101,6 @@ export class ShipyardScreen implements GameScreen {
     this.assembly.group.position.set(0, 1.7, 0);
     this.shipGroup.add(this.assembly.group);
     this.placementGroups = this.assembly.byUid;
-    this.spinTarget = this.assembly.group;
 
     this.stats = deriveStats(ship);
     applyStrainGlow(this.shipGroup, this.stats);
@@ -374,17 +372,6 @@ export class ShipyardScreen implements GameScreen {
     const amp = Math.min(0.05, over * 0.045);
     this.shipGroup.rotation.z = amp > 0.001 ? Math.sin(this.t * 3.4) * amp : 0;
     this.shipGroup.rotation.x = amp > 0.001 ? Math.cos(this.t * 2.7) * amp * 0.6 : 0;
-
-    if (this.spinTarget) {
-      this.spinTarget.traverse((o) => {
-        if (o.name === 'ship-asset-root') {
-          o.rotation.y += dt * 0.7;
-        }
-        if (o.name === 'hull-ring') {
-          (o as THREE.Mesh).rotation.z += dt * 0.9;
-        }
-      });
-    }
 
     // marker pulse — glow and breathe so free sockets are unmissable
     for (const m of this.markers) {

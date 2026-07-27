@@ -458,6 +458,30 @@ export function buildSolarArrayMesh(w: number, d: number, color: number): THREE.
   return g;
 }
 
+export function buildNuclearGeneratorMesh(w: number, d: number, color: number): THREE.Group {
+  const g = new THREE.Group();
+  const frame = mat(C.frame);
+  g.add(at(box(w, 0.25, d, frame), 0, 0.125, 0));
+  // containment dome + hazard-striped skirt
+  const hull = mat(0x6b6560, { flat: true, rough: 0.6, metal: 0.5 });
+  const r = Math.min(w, d) * 0.32;
+  g.add(at(cyl(r, r * 1.08, 1.1, hull, 14), 0, 0.8, 0));
+  g.add(at(sph(r, hull, 14), 0, 1.35, 0));
+  const stripe = mat(0x1a1a1a, { flat: true, rough: 0.9 });
+  g.add(at(cyl(r * 1.03, r * 1.03, 0.16, stripe, 14), 0, 0.35, 0));
+  // cooling fins
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI * 2;
+    const fin = at(box(0.06, 0.9, r * 0.7, mat(0x8a949c, { metal: 0.6, rough: 0.4 })), Math.cos(a) * r * 1.15, 0.8, Math.sin(a) * r * 1.15);
+    fin.rotation.y = a;
+    g.add(fin);
+  }
+  const light = at(sph(0.09, mat(color, { emissive: color, emissiveIntensity: 0.9 })), 0, 1.95, 0);
+  light.name = 'reactor-light';
+  g.add(light);
+  return g;
+}
+
 export function buildRelayMesh(w: number, d: number, color: number): THREE.Group {
   const g = new THREE.Group();
   const frame = mat(C.frame);

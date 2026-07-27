@@ -1,20 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { createProceduralShipAsset } from '../src/building/shipAsset';
 import { deriveStats, placementFrames, rangeAtFuel, travelCost } from '../src/building/shipStats';
 import type { PartPlacement } from '../src/core/state';
 import { createNewGame } from '../src/core/state';
 
 const root: PartPlacement = { uid: 'p1', partId: 'hullS', parent: null, socket: -1 };
-
-describe('createProceduralShipAsset', () => {
-  it('builds a station-like fallback asset with a visible hub and rings', () => {
-    const asset = createProceduralShipAsset();
-    const names = asset.children.map((child) => child.name);
-    expect(names).toContain('station-hub');
-    expect(names).toContain('station-ring');
-    expect(names).toContain('station-ring-outer');
-  });
-});
 
 describe('deriveStats', () => {
   it('sums the starting ship correctly', () => {

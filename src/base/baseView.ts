@@ -20,10 +20,12 @@ import type { Ctx } from '../core/ctx';
 import type { ChunkedTerrain } from '../terrain/chunkManager';
 import type { Collider } from '../interior/playerController';
 import {
+  buildNuclearGeneratorMesh,
   buildRefineryMesh,
   buildRelayMesh,
   buildSelectionRing,
   buildSiloMesh,
+  buildSolarArrayMesh,
   buildStructureGhost,
   buildStructurePlaceholder,
   buildStructureRubble,
@@ -45,6 +47,7 @@ import {
   type StructureInstance,
 } from './structures';
 import { startRepair } from './baseSim';
+import { canClean, hasPowerGrid, isGeneratorRunning, netPower, solarFactor } from './power';
 import { FLAGS } from '../core/flags';
 import { canPlace, footprintAt } from './placement';
 import { SelectionController, uidsInRect, type Px } from './selection';
@@ -55,9 +58,11 @@ import { toast } from '../ui/hud';
 
 /** bespoke finished-body builders per structure; missing → generic placeholder */
 const FINISHED_BUILDERS: Partial<Record<StructureId, (w: number, d: number, color: number) => THREE.Group>> = {
+  solarArray: buildSolarArrayMesh,
   storageSilo: buildSiloMesh,
   powerRelay: buildRelayMesh,
   refineryBuilding: buildRefineryMesh,
+  nuclearGenerator: buildNuclearGeneratorMesh,
 };
 
 /** stable per-wreck seed so a given pile of rubble looks the same every rebuild */
@@ -311,11 +316,10 @@ export class BaseView {
     for (const s of this.ctx.store.state.base.structures) {
       const def = STRUCTURES[s.defId];
       let g: THREE.Group;
-      let visKey: string;
+      const visKey = this.visKeyFor(s);
       if (s.status === 'destroyed') {
         // ruined: a rubble pile that keeps its footprint blocked until cleared
         g = buildStructureRubble(def.footprint.w, def.footprint.d, mulberry32(seedFromUid(s.uid)));
-        visKey = `${s.defId}:rubble`;
       } else {
         // AoE-style staged model: foundation → frame → half-built → finished,
         // then progressive battle damage once standing. A finished, undamaged
@@ -328,7 +332,11 @@ export class BaseView {
           s.status === 'active' && dmg === 0 && finished
             ? finished(def.footprint.w, def.footprint.d, CATEGORY_COLORS[def.category])
             : buildStructurePlaceholder(def.footprint.w, def.footprint.d, CATEGORY_COLORS[def.category], stage, dmg);
-        visKey = `${s.defId}:${stage}:${dmg}`;
+        // reactor light goes dark the instant isotopes run out
+        if (s.defId === 'nuclearGenerator' && !isGeneratorRunning(s)) {
+          const light = g.getObjectByName('reactor-light') as THREE.Mesh | undefined;
+          if (light) (light.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.05;
+        }
       }
       g.position.set(s.x, this.terrain.heightAt(s.x, s.z), s.z);
       g.rotation.y = s.rotY;
@@ -382,7 +390,10 @@ export class BaseView {
    * stage + damage level, or rubble) — a mismatch triggers a mesh swap */
   private visKeyFor(s: StructureInstance): string {
     if (s.status === 'destroyed') return `${s.defId}:rubble`;
-    return `${s.defId}:${constructionStage(s)}:${damageLevel(s)}`;
+    // nuclear generators get an extra on/off suffix so the reactor light
+    // dims the instant isotopes run out, without needing a per-frame poll
+    const power = s.defId === 'nuclearGenerator' ? `:${isGeneratorRunning(s) ? 'on' : 'off'}` : '';
+    return `${s.defId}:${constructionStage(s)}:${damageLevel(s)}${power}`;
   }
 
   /** per-frame hook: swap models as construction advances or damage crosses a
@@ -442,15 +453,41 @@ export class BaseView {
    * "under construction" to live status on completion) */
   panelSig(): string {
     const afford = STRUCTURE_IDS.map((id) => (this.ctx.store.canAfford(STRUCTURES[id].cost) ? '1' : '0')).join('');
+    // status + repair/damage/clean markers + a coarse "dusty" bit so the Clean
+    // button appears/disappears at the transitions but not every frame
     const statuses = this.ctx.store.state.base.structures
-      .map((s) => s.status[0] + (s.repairing ? 'r' : '') + (isDamaged(s) ? 'd' : ''))
+      .map(
+        (s) =>
+          s.status[0] +
+          (s.repairing ? 'r' : '') +
+          (isDamaged(s) ? 'd' : '') +
+          (s.cleaning ? 'C' : (s.dustLevel ?? 0) > 0.02 ? 'u' : '') +
+          (s.defId === 'nuclearGenerator' ? (isGeneratorRunning(s) ? 'N' : 'n') : ''),
+      )
       .join('');
     return `${this.selection.sig()}|${this.armed ?? ''}|${afford}|${statuses}#${this.ctx.store.state.base.structures.length}`;
   }
 
-  /** appended into the surface panel: construction menu + selection inspector */
+  /** appended into the surface panel: power readout + construction menu + inspector */
   renderPanel(): void {
     const store = this.ctx.store;
+    this.panelUpdaters = [];
+
+    // power readout — live net power + the day/night state that drives solar
+    if (hasPowerGrid(store.state.base.structures)) {
+      const pwr = box('Power');
+      const netVal = el('div', 'sub');
+      pwr.appendChild(netVal);
+      const cycle = el('div', 'sub');
+      pwr.appendChild(cycle);
+      this.panelUpdaters.push(() => {
+        const t = store.state.playSeconds;
+        const net = netPower(store.state.base.structures, t);
+        netVal.innerHTML = `Net <span style="color:${net >= 0 ? 'var(--green)' : 'var(--red)'}">${net >= 0 ? '+' : ''}${net.toFixed(0)}</span> power`;
+        const f = solarFactor(t);
+        cycle.textContent = f > 0.02 ? `☀ Daylight · solar ${Math.round(f * 100)}%` : '☾ Night · solar arrays idle';
+      });
+    }
 
     const menu = box('Construction');
     if (this.armed) {
@@ -476,8 +513,6 @@ export class BaseView {
       row.appendChild(b);
       menu.appendChild(row);
     }
-
-    this.panelUpdaters = [];
 
     // on-site refining: the shared refinery queue, available at the base only
     // once a Refinery structure stands (its panel is what makes raw → refined
@@ -531,6 +566,40 @@ export class BaseView {
           inner.style.width = `${Math.round(f * 100)}%`;
           inner.style.background = f > 0.55 ? 'var(--green)' : f > 0.25 ? 'var(--amber)' : 'var(--red)';
         });
+
+        // solar array: live dust level + a Clean action (costs time, not resources)
+        if (inst.defId === 'solarArray' && inst.status === 'active') {
+          const dustLabel = el('div', 'sub');
+          b.appendChild(dustLabel);
+          const dustBar = bar(0, 'var(--amber)');
+          b.appendChild(dustBar);
+          this.panelUpdaters.push(() => {
+            const dust = inst.dustLevel ?? 0;
+            (dustBar.firstElementChild as HTMLElement).style.width = `${Math.round(dust * 100)}%`;
+            dustLabel.textContent = inst.cleaning ? 'Dust · cleaning (offline)…' : `Dust ${Math.round(dust * 100)}%`;
+          });
+          if (canClean(inst)) {
+            b.appendChild(button('Clean panels', () => {
+              inst.cleaning = true;
+              store.changed();
+            }));
+          }
+        }
+
+        // nuclear generator: live isotope stock + running/offline status —
+        // steady power for as long as the shared stock holds out
+        if (inst.defId === 'nuclearGenerator' && inst.status === 'active') {
+          const nuclearLabel = el('div', 'sub');
+          b.appendChild(nuclearLabel);
+          this.panelUpdaters.push(() => {
+            const running = isGeneratorRunning(inst);
+            const isotope = store.state.stock.isotope ?? 0;
+            nuclearLabel.textContent = running
+              ? `Running · isotope stock ${Math.round(isotope)}`
+              : `OFFLINE — out of isotopes (stock ${Math.round(isotope)})`;
+            nuclearLabel.style.color = running ? '' : 'var(--red)';
+          });
+        }
 
         // repair: cheaper and faster than a rebuild (Phase 9)
         if (canRepair(inst)) {
