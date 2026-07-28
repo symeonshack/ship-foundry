@@ -118,6 +118,8 @@ export class SurfaceScreen implements GameScreen {
       this.interactFoot(this.footTarget);
     } else if (ev.code === 'KeyH' && this.mode === 'command') {
       this.centerOnLander();
+    } else if (ev.code === 'KeyF' && this.mode === 'command') {
+      this.baseView?.findNextIdle();
     } else if (ev.code === 'Escape') {
       this.baseView?.cancelArming();
     }
@@ -302,7 +304,10 @@ export class SurfaceScreen implements GameScreen {
         this.footColliders,
         this.camera,
         this.canvas,
-        { isCommand: () => this.mode === 'command' },
+        {
+          isCommand: () => this.mode === 'command',
+          centerOn: (x, z) => this.centerOn(x, z),
+        },
         this.nodeMeshes,
       );
     }

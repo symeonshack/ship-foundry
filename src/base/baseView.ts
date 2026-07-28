@@ -94,6 +94,8 @@ const BOX_DRAG_MIN_PX = 5;
 export interface BaseViewHooks {
   /** true while SurfaceScreen is in command mode (box select/placement are command-only) */
   isCommand: () => boolean;
+  /** recenter the command camera on a world point (used to jump to an idle drone) */
+  centerOn: (x: number, z: number) => void;
 }
 
 export class BaseView {
@@ -115,6 +117,8 @@ export class BaseView {
   // rally-point state (Phase 21)
   private rallyArming = false;
   private rallyMesh: THREE.Group | null = null;
+  // idle-cycle cursor (Phase 22): the last idle drone Find jumped to
+  private lastIdleUid: string | null = null;
   private ray = new THREE.Raycaster();
   /** live-updating panel elements (construction %, HP bars) — rebuilt with the panel */
   private panelUpdaters: (() => void)[] = [];
@@ -300,6 +304,38 @@ export class BaseView {
       if (m.geometry) m.geometry.dispose();
       if (m.material) (Array.isArray(m.material) ? m.material : [m.material]).forEach((x) => x.dispose());
     });
+  }
+
+  // ---- idle-unit detection (Phase 22) ----
+
+  /** drones with nothing to do — no task, no queued order */
+  private idleDrones() {
+    return this.ctx.store.state.base.drones.filter((d) => d.status === 'idle');
+  }
+
+  /**
+   * Select the next idle drone and jump the camera to it, cycling through them
+   * on repeated presses (uid-sorted for a stable order). Returns false when
+   * there are none. Wired to the panel button and the F hotkey.
+   */
+  findNextIdle(): boolean {
+    const idle = this.idleDrones().sort((a, b) => a.uid.localeCompare(b.uid));
+    if (idle.length === 0) return false;
+    const startAfter = idle.findIndex((d) => d.uid === this.lastIdleUid);
+    const next = idle[(startAfter + 1) % idle.length]!;
+    this.lastIdleUid = next.uid;
+    if (this.selection.replace([next.uid])) this.syncSelectionRings();
+    this.hooks.centerOn(next.x, next.z);
+    return true;
+  }
+
+  /** the "Find idle (N)" button in the Drones panel box */
+  private renderIdleControl(ctrl: HTMLElement): void {
+    const count = this.idleDrones().length;
+    const b = button(`Find idle drone (${count})`, () => this.findNextIdle());
+    b.title = 'Select and jump to the next drone with nothing to do (hotkey: F).';
+    if (count === 0) b.disabled = true;
+    ctrl.appendChild(b);
   }
 
   private disposeGhost(): void {
@@ -646,8 +682,9 @@ export class BaseView {
     return (
       `${this.selection.sig()}|${this.armed ?? ''}|${this.rallyArming ? 'R' : ''}|${rally ? 'r' : ''}` +
       `|${afford}|${statuses}#${this.ctx.store.state.base.structures.length}` +
-      // drone count so the rally controls appear/disappear with the roster
-      `|d${drones.length}`
+      // drone count so the rally controls appear/disappear with the roster,
+      // and idle count so the "Find idle (N)" label + disabled state track it
+      `|d${drones.length}i${drones.filter((d) => d.status === 'idle').length}`
     );
   }
 
@@ -715,6 +752,7 @@ export class BaseView {
       rallyBtn.title = 'New drones report to the rally point. Right-click or Esc cancels.';
       ctrl.appendChild(rallyBtn);
       if (rally) ctrl.appendChild(button('Clear rally', () => this.clearRally()));
+      this.renderIdleControl(ctrl);
     }
 
     // dev-mode drone spawn: real production is wired to the Fabricator queue

@@ -107,6 +107,8 @@ At the Foundry/Landing Zone specifically, extraction feeds the base stockpile di
 
 **Rally point.** The **Drones** box in the side panel (appears once a Fabricator is up, any drone exists, or dev mode is on) has a **Set rally point** button — click it, then click the ground, and a flag marks the spot. Every drone produced afterward walks to the rally point the moment it's made instead of piling up at the Fabricator, so you can pre-stage new drones near a work site. "Move rally point" repositions the flag, "Clear rally" removes it (new drones then just sit where they're made). Right-click or Esc cancels while you're placing it.
 
+**Find idle drone.** As the drone roster grows it's easy to leave one standing around doing nothing. The **Find idle drone (N)** button in the Drones box — or the **F** hotkey in command view — selects the next drone with no task and snaps the camera to it; press it again to cycle through the rest. The count in the label is how many are currently idle, and the button greys out when everything's busy.
+
 **Ambient pressure:** landing is not free. A red **LIFE-SUPPORT DRAIN** badge next to the fuel gauge (top bar) means fuel is draining continuously — this only stops once a **Solar Array**, a **Refinery**, and a **Storage Silo** are all standing at once. The instant all three are up, the drain halts for good (a toast confirms it) — and if you later lose one of them, the drain resumes until it's rebuilt. Getting self-sufficient before the tank runs dry is the opening tension.
 
 ## Refinery (at the Foundry)
