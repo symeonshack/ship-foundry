@@ -12,7 +12,7 @@ import { FLAGS } from '../core/flags';
 import type { GameStore } from '../core/state';
 import { STRUCTURES, canRepair, repairCost, tickConstruction, tickRepair, type StructureInstance } from './structures';
 import { isGeneratorRunning, tickNuclear, tickSolar } from './power';
-import { tickDroneMove, tickFabricator } from './drones';
+import { tickDroneTask, tickFabricator } from './drones';
 import { footprintAt } from './placement';
 
 /** notify (and re-render) at most this often for continuous numeric drift —
@@ -95,13 +95,17 @@ export class BaseSim {
       }
     }
 
-    // drone movement toward a manual order: continuous drift like HP/dust,
-    // read live by the renderer — only arrival is a real transition.
-    // Colliders are recomputed from live structure state rather than shared
-    // with BaseView, since this sim must keep running with no view attached.
+    // drone movement + the Worker Drone gather loop: continuous drift (walking,
+    // carrying) is read live by the renderer, like HP/dust/isotope burn — only
+    // a task-state flip (moving → gathering → returning → idle) is a real
+    // transition worth a refresh. Colliders are recomputed from live structure
+    // state rather than shared with BaseView, since this sim must keep running
+    // with no view attached.
     const droneColliders = this.store.state.base.structures.map((s) => footprintAt(STRUCTURES[s.defId], s.x, s.z));
     for (const d of this.store.state.base.drones) {
-      if (tickDroneMove(d, dt, droneColliders) === 'arrived') transitions = true;
+      const before = d.status;
+      tickDroneTask(this.store, d, dt, droneColliders);
+      if (d.status !== before) transitions = true;
     }
 
     if (isotopeConsumed) {

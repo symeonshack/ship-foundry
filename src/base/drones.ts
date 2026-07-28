@@ -1,19 +1,24 @@
 /**
- * Drone catalog, the Fabricator's production queue (Phase 17), and real
- * world-entity movement (Phase 19). A `DroneInstance` exists, can be
- * selected, and can be given a manual move order. Spawning one from a
- * completed Fabricator job is still Phase 24 — until then, `BaseView`'s
- * dev-mode panel spawns one directly so movement/selection/orders can
- * actually be exercised.
+ * Drone catalog, the Fabricator's production queue (Phase 17), real
+ * world-entity movement (Phase 19), and the Worker Drone gather-trip loop
+ * (Phase 20). A `DroneInstance` exists, can be selected, and can be given a
+ * manual move order or a gather order on a deposit — travel, extraction,
+ * carry, and the trip home are all real time, looping automatically until
+ * the deposit runs dry. Spawning one from a completed Fabricator job is
+ * still Phase 24 — until then, `BaseView`'s dev-mode panel spawns one
+ * directly so movement/selection/orders/gathering can actually be exercised.
  */
 import type { Collider } from '../interior/playerController';
 import { moveWithCollision } from '../interior/playerController';
 import type { ResourceCost } from '../core/resources';
 import type { GameStore } from '../core/state';
 import { BALANCE } from '../config/balance';
-import type { FabricationJob, StructureInstance } from './structures';
+import { storageCapacity, type FabricationJob, type StructureInstance } from './structures';
 
 export type DroneId = 'worker' | 'hauler';
+
+/** the home site's poi id — drones live and work at the Landing Zone only */
+const HOME_POI = 'foundry';
 
 /** a real, movable, selectable world unit produced by a Fabricator */
 export interface DroneInstance {
@@ -21,9 +26,16 @@ export interface DroneInstance {
   defId: DroneId;
   x: number;
   z: number;
-  status: 'idle' | 'moving';
-  /** manual move-order destination; cleared on arrival */
+  status: 'idle' | 'moving' | 'gathering' | 'returning';
+  /** current movement destination; cleared on arrival */
   target: { x: number; z: number } | null;
+  /** worker drones on a gather loop: the deposit they're assigned to */
+  nodeId?: string;
+  /** worker drones: raw units currently held, banked to stock on return */
+  carrying?: number;
+  /** worker drones: where to bring the haul back to (wherever the order was given from) */
+  returnX?: number;
+  returnZ?: number;
 }
 
 /** distance under which a drone counts as having arrived at its target */
@@ -108,7 +120,9 @@ export function tickFabricator(inst: StructureInstance, dt: number): DroneId[] {
  * read live by the renderer, like HP/dust/isotope burn elsewhere.
  */
 export function tickDroneMove(inst: DroneInstance, dt: number, colliders: Collider[]): 'arrived' | null {
-  if (inst.status !== 'moving' || !inst.target) return null;
+  // 'returning' is the gather loop's trip home — physically identical travel,
+  // just tagged differently so the panel/task logic knows which leg it is
+  if ((inst.status !== 'moving' && inst.status !== 'returning') || !inst.target) return null;
   const target = inst.target;
   const dx = target.x - inst.x;
   const dz = target.z - inst.z;
@@ -130,4 +144,103 @@ export function tickDroneMove(inst: DroneInstance, dt: number, colliders: Collid
     return 'arrived';
   }
   return null;
+}
+
+/** issue a manual move order — clears any gather assignment (this is a recall) */
+export function orderMove(drone: DroneInstance, x: number, z: number): void {
+  drone.nodeId = undefined;
+  drone.carrying = 0;
+  drone.target = { x, z };
+  drone.status = 'moving';
+}
+
+/** issue a gather order on a deposit — the return leg comes back to wherever the drone is now */
+export function orderGather(drone: DroneInstance, nodeId: string, nodeX: number, nodeZ: number): void {
+  drone.returnX = drone.x;
+  drone.returnZ = drone.z;
+  drone.nodeId = nodeId;
+  drone.carrying = 0;
+  drone.target = { x: nodeX, z: nodeZ };
+  drone.status = 'moving';
+}
+
+function totalStock(store: GameStore): number {
+  return Object.values(store.state.stock).reduce((a: number, b) => a + b, 0);
+}
+
+/** extract from the assigned node while parked on it; heads home once full or the deposit runs dry */
+function tickGather(store: GameStore, drone: DroneInstance, dt: number): void {
+  const cfg = BALANCE.landingZone.drones;
+  const node = (store.poi(HOME_POI).nodes ?? []).find((n) => n.id === drone.nodeId);
+  if (!node || node.remaining <= 0) {
+    drone.status = 'returning';
+    drone.target = { x: drone.returnX ?? drone.x, z: drone.returnZ ?? drone.z };
+    return;
+  }
+  const room = cfg.carryCapacity - (drone.carrying ?? 0);
+  const take = Math.min(cfg.gatherRate * dt, node.remaining, room);
+  node.remaining -= take;
+  drone.carrying = (drone.carrying ?? 0) + take;
+  if (node.remaining <= 0 || (drone.carrying ?? 0) >= cfg.carryCapacity) {
+    drone.status = 'returning';
+    drone.target = { x: drone.returnX ?? drone.x, z: drone.returnZ ?? drone.z };
+  }
+}
+
+/**
+ * Bank whatever's carried the moment the drone gets home. Whole units only,
+ * same convention as rig extraction; a fractional remainder just waits for
+ * next trip's accumulation rather than being lost. Respects the same
+ * storage cap rigs do — if the base is full, the drone parks at the return
+ * point and keeps retrying every tick rather than dropping the haul.
+ */
+function tickReturn(store: GameStore, drone: DroneInstance): void {
+  const node = (store.poi(HOME_POI).nodes ?? []).find((n) => n.id === drone.nodeId);
+  const carrying = drone.carrying ?? 0;
+  if (node && carrying >= 1) {
+    const room = Math.max(0, storageCapacity(store.state.base.structures) - totalStock(store));
+    const bankable = Math.min(Math.floor(carrying), room);
+    if (bankable > 0) {
+      store.addStock(node.resource, bankable);
+      drone.carrying = carrying - bankable;
+    }
+  }
+  if ((drone.carrying ?? 0) >= 1) {
+    // storage is full — hold position and retry next tick
+    drone.status = 'returning';
+    drone.target = { x: drone.x, z: drone.z };
+    return;
+  }
+  if (node && node.remaining > 0) {
+    drone.carrying = 0;
+    drone.target = { x: node.x, z: node.z };
+    drone.status = 'moving';
+  } else {
+    drone.nodeId = undefined;
+    drone.carrying = 0;
+    drone.status = 'idle';
+  }
+}
+
+/**
+ * Advance a drone's full task state by dt seconds: movement (Phase 19) plus
+ * the Worker Drone gather loop (Phase 20) — travel to the deposit, extract,
+ * carry, travel home, bank, and repeat until the deposit runs dry. Ticked
+ * from BaseSim, so the loop keeps running whether or not the base screen is
+ * open, same as every other Landing Zone system.
+ */
+export function tickDroneTask(store: GameStore, drone: DroneInstance, dt: number, colliders: Collider[]): void {
+  if (drone.status === 'gathering') {
+    tickGather(store, drone, dt);
+    return;
+  }
+  const wasStatus = drone.status;
+  if (tickDroneMove(drone, dt, colliders) !== 'arrived') return;
+  if (wasStatus === 'moving' && drone.nodeId) {
+    const node = (store.poi(HOME_POI).nodes ?? []).find((n) => n.id === drone.nodeId);
+    if (node && node.remaining > 0) drone.status = 'gathering';
+    else drone.nodeId = undefined;
+  } else if (wasStatus === 'returning') {
+    tickReturn(store, drone);
+  }
 }

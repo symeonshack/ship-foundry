@@ -179,12 +179,17 @@ export const BALANCE = {
         isotopeBurnPerSec: 0.02,
       },
     },
-    /** drone unit movement (Phase 19) — per-type costs/build times live in the catalog, src/base/drones.ts */
+    /** drone unit movement + the Worker gather loop (Phase 19/20) — per-type
+     * costs/build times live in the catalog, src/base/drones.ts */
     drones: {
-      /** ground speed, world units/sec, moving toward a manual order */
+      /** ground speed, world units/sec, moving toward an order */
       moveSpeed: 3,
       /** collision radius against structure footprints, same scale as the player */
       radius: 0.4,
+      /** worker drones: extraction rate while parked on a deposit, raw units/sec */
+      gatherRate: 0.6,
+      /** worker drones: units held before heading home, even if the deposit has more */
+      carryCapacity: 4,
     },
   },
 

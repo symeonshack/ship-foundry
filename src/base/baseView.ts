@@ -34,7 +34,7 @@ import {
   buildStructureRubble,
   mulberry32,
 } from '../scene/primitives';
-import { DRONES, DRONE_IDS } from './drones';
+import { DRONES, DRONE_IDS, orderGather, orderMove } from './drones';
 import {
   STRUCTURES,
   STRUCTURE_IDS,
@@ -123,6 +123,9 @@ export class BaseView {
     private camera: THREE.PerspectiveCamera,
     private canvas: HTMLCanvasElement,
     private hooks: BaseViewHooks,
+    /** the site's deposit meshes — a live reference SurfaceScreen keeps populating,
+     * so a right-click on a deposit can issue a gather order (Phase 20) */
+    private nodeMeshes: Map<string, THREE.Group>,
   ) {
     this.group.name = 'landing-zone-base';
     this.group.add(this.structureGroup);
@@ -476,11 +479,18 @@ export class BaseView {
 
   // ---- clicks ----
 
+  /** the home site's own deposit nodes — always the current poi while this view is alive */
+  private currentNodes() {
+    return this.ctx.store.poi(this.ctx.store.state.currentPoi).nodes ?? [];
+  }
+
   /**
    * Command-mode click, tried before the rig-arming flow. While placing:
    * left commits, right cancels. Otherwise: left selects a structure or
-   * drone (or clears on empty ground); right issues a move order to any
-   * selected drones (Phase 19), or is a no-op if none are selected.
+   * drone (or clears on empty ground); right issues an order to any selected
+   * drones — a gather order if it lands on a live deposit and a worker is
+   * selected (Phase 20), otherwise a plain move order (Phase 19). No-op if
+   * no drones are selected.
    */
   onCommandClick(raycaster: THREE.Raycaster, button: number): boolean {
     if (this.armed) {
@@ -495,15 +505,22 @@ export class BaseView {
       return false;
     }
     if (button === 2) {
-      const orderedDrones = this.ctx.store.state.base.drones.filter((d) => this.selection.selected.has(d.uid));
-      if (orderedDrones.length > 0) {
-        const hit = raycaster.intersectObjects(this.terrain.group.children, false)[0];
-        if (hit) {
-          for (const d of orderedDrones) {
-            d.target = { x: hit.point.x, z: hit.point.z };
-            d.status = 'moving';
-          }
+      const ordered = this.ctx.store.state.base.drones.filter((d) => this.selection.selected.has(d.uid));
+      if (ordered.length > 0) {
+        const workers = ordered.filter((d) => d.defId === 'worker');
+        const nodeHit = workers.length > 0 ? raycaster.intersectObjects([...this.nodeMeshes.values()], true)[0] : undefined;
+        let obj: THREE.Object3D | null | undefined = nodeHit?.object;
+        while (obj && !obj.userData.nodeId) obj = obj.parent;
+        const nodeState = obj ? this.currentNodes().find((n) => n.id === obj!.userData.nodeId) : undefined;
+        if (nodeState && nodeState.remaining > 0) {
+          for (const d of workers) orderGather(d, nodeState.id, nodeState.x, nodeState.z);
           this.ctx.store.changed();
+        } else {
+          const hit = raycaster.intersectObjects(this.terrain.group.children, false)[0];
+          if (hit) {
+            for (const d of ordered) orderMove(d, hit.point.x, hit.point.z);
+            this.ctx.store.changed();
+          }
         }
       }
       return true;
@@ -648,7 +665,12 @@ export class BaseView {
           row.appendChild(status);
           b.appendChild(row);
           this.panelUpdaters.push(() => {
-            status.textContent = drone.status === 'moving' ? 'moving' : 'idle';
+            const carried = Math.floor(drone.carrying ?? 0);
+            status.textContent =
+              drone.status === 'gathering' ? `gathering · carrying ${carried}`
+              : drone.status === 'returning' ? `returning · carrying ${carried}`
+              : drone.status === 'moving' ? (drone.nodeId ? 'moving to deposit' : 'moving')
+              : 'idle';
           });
           b.appendChild(el('div', 'sub', def.desc));
           continue;

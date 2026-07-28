@@ -295,9 +295,16 @@ export class SurfaceScreen implements GameScreen {
     // Landing Zone: the BaseView delegate owns all home-base meshes/logic on
     // this same live scene — base-building phases grow in src/base/, not here
     if (this.def.special === 'home') {
-      this.baseView = new BaseView(this.ctx, this.scene, terrain, this.footColliders, this.camera, this.canvas, {
-        isCommand: () => this.mode === 'command',
-      });
+      this.baseView = new BaseView(
+        this.ctx,
+        this.scene,
+        terrain,
+        this.footColliders,
+        this.camera,
+        this.canvas,
+        { isCommand: () => this.mode === 'command' },
+        this.nodeMeshes,
+      );
     }
 
     if (this.def.special === 'anomaly') {
