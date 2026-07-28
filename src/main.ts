@@ -10,6 +10,7 @@ import { DiscoveryLog } from './companion/discoveryLog';
 import { Refinery } from './mining/refinery';
 import { BaseSim } from './base/baseSim';
 import { STRUCTURES } from './base/structures';
+import { DRONES, type DroneId } from './base/drones';
 import { autoRefuel } from './mining/hauling';
 import { ShipyardScreen } from './building/shipyard';
 import { StarMapScreen } from './exploration/starMap';
@@ -78,7 +79,11 @@ for (const event of ['travel:arrive', 'build:placed', 'refine:complete', 'encoun
   bus.on(event, () => saveGame(store.state));
 }
 bus.on('structure:complete', ({ defId }) => {
-  toast(`${STRUCTURES[defId as keyof typeof STRUCTURES].name} online`, 'good');
+  if (defId === 'foundry') {
+    toast('Foundry online — the base is no longer just a camp. Shipyard access granted.', 'good');
+  } else {
+    toast(`${STRUCTURES[defId as keyof typeof STRUCTURES].name} online`, 'good');
+  }
   saveGame(store.state);
 });
 bus.on('structure:repaired', ({ defId }) => {
@@ -100,6 +105,10 @@ bus.on('power:generatorOffline', () => {
 });
 bus.on('power:generatorOnline', () => {
   toast('Nuclear Generator back online', 'good');
+});
+bus.on('drone:produced', ({ defId }) => {
+  toast(`${DRONES[defId as DroneId].name} ready`, 'good');
+  saveGame(store.state);
 });
 window.addEventListener('beforeunload', () => saveGame(store.state));
 
@@ -131,9 +140,10 @@ manager.start();
 }
 
 // saves from before the shipyard gate existed had a working Foundry all
-// along — keep it that way. TODO(Phase 16): revisit alongside the
-// earned-by-construction flip.
-if (!store.hasFlag(FLAGS.FOUNDRY_BUILT)) store.setFlag(FLAGS.FOUNDRY_BUILT, true);
+// along — grandfather them in. A brand-new game must NOT hit this (it has
+// to earn the Foundry for real, per Phase 16), so it's gated on !isNewGame,
+// same as the fuel-reserve migration just below.
+if (!isNewGame && !store.hasFlag(FLAGS.FOUNDRY_BUILT)) store.setFlag(FLAGS.FOUNDRY_BUILT, true);
 
 // retro-apply the starting fuel reserve to saves created before it existed
 const FUEL_RESERVE_MIGRATION = 'migration.fuelReserve';

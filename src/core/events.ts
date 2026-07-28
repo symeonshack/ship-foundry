@@ -24,7 +24,7 @@ export interface GameEvents {
   'node:collapsed': { poiId: string; nodeId: string };
   'site:discovery': { poiId: string; id: string; label: string };
 
-  // Landing Zone base-building (drone payloads get real shapes at Phase 24)
+  // Landing Zone base-building
   'structure:placed': { uid: string; defId: string };
   'structure:complete': { uid: string; defId: string };
   'structure:destroyed': { uid: string; defId: string };
@@ -35,7 +35,8 @@ export interface GameEvents {
   /** a nuclear generator ran dry / came back on stream (Phase 15) */
   'power:generatorOffline': { uid: string; defId: string };
   'power:generatorOnline': { uid: string; defId: string };
-  'drone:produced': Record<string, never>;
+  /** a Fabricator queue job finished (Phase 17) — no world entity yet, that's Phase 24 */
+  'drone:produced': { defId: string };
   'drone:idle': Record<string, never>;
 
   'refine:complete': { recipeId: string; output: RefinedResourceId };

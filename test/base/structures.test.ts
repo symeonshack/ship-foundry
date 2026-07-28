@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  applyDamage,
   canBuild,
+  canRepair,
+  damageLevel,
   isDamaged,
   maxHpNow,
+  repairCost,
   STRUCTURE_IDS,
   STRUCTURES,
   type StructureId,
@@ -77,6 +81,37 @@ describe('structure catalog integrity', () => {
   it('power producers and consumers both exist in the catalog', () => {
     expect(STRUCTURE_IDS.some((id) => (STRUCTURES[id].powerSupply ?? 0) > 0)).toBe(true);
     expect(STRUCTURE_IDS.some((id) => (STRUCTURES[id].powerDemand ?? 0) > 0)).toBe(true);
+  });
+});
+
+describe('Launch Pad (Phase 18) needs zero special-casing', () => {
+  it('gates on Foundry alone, same canBuild path as any other prereq', () => {
+    expect(canBuild('launchPad', []).ok).toBe(false);
+    expect(canBuild('launchPad', [inst({ defId: 'foundry', status: 'active' })]).ok).toBe(true);
+  });
+
+  it('builds, damages, repairs, and destructs through the exact generic pipeline', () => {
+    const def = STRUCTURES.launchPad;
+    // construction HP ramp
+    expect(maxHpNow(inst({ defId: 'launchPad', status: 'building', buildProgress: 0 }))).toBeCloseTo(
+      def.maxHp * BALANCE.landingZone.structures.hpFractionAtStart,
+    );
+    // damage thresholds
+    const full = inst({ defId: 'launchPad', hp: def.maxHp });
+    expect(damageLevel(full)).toBe(0);
+    expect(isDamaged(full)).toBe(false);
+    const hurt = inst({ defId: 'launchPad', hp: def.maxHp * BALANCE.landingZone.structures.damageStage2 });
+    expect(damageLevel(hurt)).toBe(2);
+    expect(isDamaged(hurt)).toBe(true);
+    // repair economics scale off its own cost/maxHp, no branch on id
+    expect(canRepair(hurt)).toBe(true);
+    const cost = repairCost(hurt);
+    expect(cost.alloy).toBeGreaterThan(0);
+    expect(cost.ceramic).toBeGreaterThan(0);
+    // destruction
+    const dying = inst({ defId: 'launchPad', hp: 1 });
+    expect(applyDamage(dying, 999)).toBe('destroyed');
+    expect(dying.status).toBe('destroyed');
   });
 });
 

@@ -26,8 +26,9 @@ export const FLAGS = {
   // progression
   INTRO_DONE: 'intro.done',
   /** Landing Zone: the shipyard is gated behind an earned, built Foundry.
-   * Seeded true until the Foundry structure exists as a buildable (see
-   * TODO(Phase 16) in createNewGame) — then it becomes earned-by-construction. */
+   * Unset on a fresh game; BaseSim sets it the moment a Foundry structure
+   * finishes construction (Phase 16). Saves that predate this gate are
+   * grandfathered in by a one-time main.ts migration. */
   FOUNDRY_BUILT: 'landingZone.foundryBuilt',
   FIRST_SCAN: 'progress.firstScan',
   FIRST_MINE: 'progress.firstMine',

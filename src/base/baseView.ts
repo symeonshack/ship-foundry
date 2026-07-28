@@ -20,6 +20,8 @@ import type { Ctx } from '../core/ctx';
 import type { ChunkedTerrain } from '../terrain/chunkManager';
 import type { Collider } from '../interior/playerController';
 import {
+  buildFoundryStructureMesh,
+  buildLaunchPadMesh,
   buildNuclearGeneratorMesh,
   buildRefineryMesh,
   buildRelayMesh,
@@ -53,7 +55,7 @@ import { canPlace, footprintAt } from './placement';
 import { SelectionController, uidsInRect, type Px } from './selection';
 import { BALANCE } from '../config/balance';
 import { costToString } from '../core/resources';
-import { bar, box, button, el, renderRefineryPanel } from '../ui/panels';
+import { bar, box, button, el, renderFabricatorPanel, renderRefineryPanel } from '../ui/panels';
 import { toast } from '../ui/hud';
 
 /** bespoke finished-body builders per structure; missing → generic placeholder */
@@ -63,6 +65,8 @@ const FINISHED_BUILDERS: Partial<Record<StructureId, (w: number, d: number, colo
   powerRelay: buildRelayMesh,
   refineryBuilding: buildRefineryMesh,
   nuclearGenerator: buildNuclearGeneratorMesh,
+  foundry: buildFoundryStructureMesh,
+  launchPad: buildLaunchPadMesh,
 };
 
 /** stable per-wreck seed so a given pile of rubble looks the same every rebuild */
@@ -520,6 +524,14 @@ export class BaseView {
     if (store.state.base.structures.some((s) => s.status === 'active' && s.defId === 'refineryBuilding')) {
       const live = renderRefineryPanel(this.ctx);
       this.panelUpdaters.push(() => live.update());
+    }
+
+    // fabricator: one queue panel per active instance (ordinarily just one)
+    for (const inst of store.state.base.structures) {
+      if (inst.status === 'active' && inst.defId === 'fabricator') {
+        const live = renderFabricatorPanel(this.ctx, inst);
+        this.panelUpdaters.push(() => live.update());
+      }
     }
 
     if (this.selection.selected.size > 0) {

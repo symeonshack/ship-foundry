@@ -8,9 +8,11 @@
  * tick it.
  */
 import { BALANCE } from '../config/balance';
+import { FLAGS } from '../core/flags';
 import type { GameStore } from '../core/state';
 import { canRepair, repairCost, tickConstruction, tickRepair, type StructureInstance } from './structures';
 import { isGeneratorRunning, tickNuclear, tickSolar } from './power';
+import { tickFabricator } from './drones';
 
 /** notify (and re-render) at most this often for continuous numeric drift —
  * fuel drain, isotope burn — the top bar doesn't need 60fps precision, and
@@ -53,6 +55,11 @@ export class BaseSim {
       const built = tickConstruction(inst, dt);
       if (built === 'completed') {
         this.store.bus.emit('structure:complete', { uid: inst.uid, defId: inst.defId });
+        // this is the earned flip of the Phase 3 gate: the shipyard was
+        // reachable from game start only via a default-true stub flag, and
+        // that stub is gone now — a real Foundry completing is the one
+        // place FOUNDRY_BUILT ever gets set for a fresh game.
+        if (inst.defId === 'foundry') this.store.setFlag(FLAGS.FOUNDRY_BUILT, true);
         transitions = true;
       } else if (built === 'destroyed') {
         this.store.bus.emit('structure:destroyed', { uid: inst.uid, defId: inst.defId });
@@ -77,6 +84,13 @@ export class BaseSim {
         transitions = true;
       } else if (inst.defId === 'nuclearGenerator' && inst.status === 'active' && isGeneratorRunning(inst)) {
         isotopeConsumed = true;
+      }
+
+      // fabricator: each finished unit is a real transition worth a toast,
+      // even though it doesn't spawn a world entity yet (Phase 24)
+      for (const defId of tickFabricator(inst, dt)) {
+        this.store.bus.emit('drone:produced', { defId });
+        transitions = true;
       }
     }
 

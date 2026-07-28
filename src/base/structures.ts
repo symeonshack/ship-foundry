@@ -51,6 +51,18 @@ export interface StructureDef {
   category: StructureCategory;
 }
 
+/**
+ * A queued production unit — reuses RefineJob's exact shape (Phase 17).
+ * `defId` is a DroneId (kept as `string` here so this file doesn't need to
+ * depend on base/drones.ts for a type).
+ */
+export interface FabricationJob {
+  defId: string;
+  unitsTotal: number;
+  unitsDone: number;
+  progressSec: number;
+}
+
 export interface StructureInstance {
   uid: string;
   defId: StructureId;
@@ -70,6 +82,8 @@ export interface StructureInstance {
   /** nuclear generators only (Phase 15): false once the shared isotope stock
    * runs dry — absent/true means running */
   running?: boolean;
+  /** fabricators only (Phase 17): FIFO drone-production queue */
+  queue?: FabricationJob[];
 }
 
 export const STRUCTURES: Record<StructureId, StructureDef> = {

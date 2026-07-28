@@ -1,5 +1,5 @@
 import type { EventBus } from './events';
-import { FLAGS, type FlagValue } from './flags';
+import type { FlagValue } from './flags';
 import {
   ALL_RESOURCE_IDS,
   type RawResourceId,
@@ -154,10 +154,10 @@ export function createNewGame(): GameState {
     currentPoi: 'foundry',
     pois: {},
     refinery: { tier: 1, queue: [] },
-    // TODO(Phase 16): remove this default-true seed once the Foundry structure
-    // exists as a buildable — from then on FOUNDRY_BUILT is earned by
-    // constructing it at the Landing Zone site.
-    flags: { [FLAGS.FOUNDRY_BUILT]: true },
+    // FLAGS.FOUNDRY_BUILT starts unset: the shipyard is locked until a
+    // Foundry structure is actually built at the Landing Zone (Phase 16) —
+    // BaseSim sets it the moment that construction completes.
+    flags: {},
     log: [],
     gertySeen: {},
     encounter: { started: false, solved: false, turnCount: 0, modules: [] },

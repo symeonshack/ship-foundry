@@ -511,6 +511,62 @@ export function buildRefineryMesh(w: number, d: number, color: number): THREE.Gr
 }
 
 /**
+ * The Foundry (earned, Phase 16) — a fabrication hall with a gantry crane
+ * straddling the roof, distinct from `buildFoundryBase()` (the crashed
+ * deployment-platform backdrop rendered at the flight-approach/shipyard
+ * scenes, which this does not replace or touch).
+ */
+export function buildFoundryStructureMesh(w: number, d: number, color: number): THREE.Group {
+  const g = new THREE.Group();
+  const frame = mat(C.frame);
+  g.add(at(box(w, 0.25, d, frame), 0, 0.125, 0));
+  const hall = mat(color, { flat: true, rough: 0.7, metal: 0.4 });
+  g.add(at(box(w * 0.8, 1.3, d * 0.75, hall), 0, 0.9, 0));
+  // gantry crane straddling the hall roof
+  const rail = mat(0x8a949c, { metal: 0.6, rough: 0.4 });
+  for (const sz of [-1, 1] as const) {
+    g.add(at(box(w * 0.9, 0.1, 0.1, rail), 0, 1.75, sz * d * 0.34));
+    for (const sx of [-1, 1] as const) {
+      g.add(at(box(0.08, 0.55, 0.08, frame), sx * w * 0.42, 1.45, sz * d * 0.34));
+    }
+  }
+  const trolley = at(box(0.35, 0.2, d * 0.7, rail), -w * 0.1, 1.85, 0);
+  g.add(trolley);
+  g.add(at(cyl(0.03, 0.03, 0.5, frame, 6), -w * 0.1, 1.55, 0));
+  g.add(at(sph(0.09, mat(color, { emissive: color, emissiveIntensity: 0.8 })), w * 0.32, 1.4, d * 0.3));
+  return g;
+}
+
+/**
+ * The Launch Pad (Phase 18) — a circular blast pad with a central gantry
+ * tower and hazard-striped blast deflector. Structure only: no launch queue
+ * yet (that's Part VII), so this participates in selection/repair/damage
+ * exactly like every other structure, with zero special-casing.
+ */
+export function buildLaunchPadMesh(w: number, d: number, color: number): THREE.Group {
+  const g = new THREE.Group();
+  const frame = mat(C.frame);
+  g.add(at(box(w, 0.25, d, frame), 0, 0.125, 0));
+  const pad = mat(0x4a4640, { flat: true, rough: 0.85, metal: 0.2 });
+  const r = Math.min(w, d) * 0.46;
+  g.add(at(cyl(r, r, 0.18, pad, 20), 0, 0.34, 0));
+  const stripe = mat(0xd8b23c, { flat: true, rough: 0.6 });
+  g.add(at(cyl(r * 1.02, r * 1.02, 0.05, stripe, 20), 0, 0.44, 0));
+  // blast deflector trench off to one side
+  g.add(at(box(w * 0.3, 0.35, d * 0.6, mat(0x2a2a2a, { flat: true, rough: 0.9 })), -w * 0.32, 0.17, 0));
+  // central gantry tower with cross-braces climbing to a beacon
+  for (const [sx, sz] of [[-1, -1], [-1, 1], [1, -1], [1, 1]] as const) {
+    g.add(at(cyl(0.08, 0.08, 3.2, frame, 6), sx * r * 0.4, 1.7, sz * r * 0.4));
+  }
+  for (const y of [0.6, 1.6, 2.6]) {
+    g.add(at(box(r * 0.8, 0.06, 0.06, frame), 0, y, r * 0.4));
+    g.add(at(box(0.06, 0.06, r * 0.8, frame), r * 0.4, y, 0));
+  }
+  g.add(at(sph(0.1, mat(color, { emissive: color, emissiveIntensity: 0.9 })), 0, 3.35, 0));
+  return g;
+}
+
+/**
  * A ruined structure: a scorched patch with scattered debris chunks and a
  * couple of leaning skeletal frame remnants. Pass a seeded rand so a given
  * wreck looks the same every time the scene rebuilds.
