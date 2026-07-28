@@ -24,6 +24,7 @@ import {
   buildFoundryStructureMesh,
   buildLaunchPadMesh,
   buildNuclearGeneratorMesh,
+  buildRallyFlag,
   buildRefineryMesh,
   buildRelayMesh,
   buildSelectionRing,
@@ -34,7 +35,7 @@ import {
   buildStructureRubble,
   mulberry32,
 } from '../scene/primitives';
-import { DRONES, DRONE_IDS, orderGather, orderMove } from './drones';
+import { DRONES, DRONE_IDS, orderGather, orderMove, spawnDrone } from './drones';
 import {
   STRUCTURES,
   STRUCTURE_IDS,
@@ -111,6 +112,9 @@ export class BaseView {
   private armed: StructureId | null = null;
   private ghost: THREE.Group | null = null;
   private ghostValid = false;
+  // rally-point state (Phase 21)
+  private rallyArming = false;
+  private rallyMesh: THREE.Group | null = null;
   private ray = new THREE.Raycaster();
   /** live-updating panel elements (construction %, HP bars) — rebuilt with the panel */
   private panelUpdaters: (() => void)[] = [];
@@ -147,6 +151,7 @@ export class BaseView {
 
     this.syncMeshes();
     this.syncDroneMeshes();
+    this.syncRallyMarker();
   }
 
   // ---- selection box (Shift + left-drag) ----
@@ -216,6 +221,7 @@ export class BaseView {
       this.cancelArming();
       return;
     }
+    this.rallyArming = false;
     this.armed = id;
     this.selection.clear();
     this.syncSelectionRings();
@@ -226,12 +232,74 @@ export class BaseView {
     this.group.add(this.ghost);
   }
 
-  /** true when arming was active and got cancelled (Escape / right-click) */
+  /** true when arming (structure placement OR rally-set) was active and got
+   * cancelled — wired to Escape and right-click */
   cancelArming(): boolean {
+    if (this.rallyArming) {
+      this.rallyArming = false;
+      return true;
+    }
     if (!this.armed) return false;
     this.armed = null;
     this.disposeGhost();
     return true;
+  }
+
+  // ---- rally point (Phase 21) ----
+
+  private toggleRallyArm(): void {
+    this.rallyArming = !this.rallyArming;
+    if (this.rallyArming) {
+      this.cancelArmingStructureOnly();
+      this.selection.clear();
+      this.syncSelectionRings();
+    }
+  }
+
+  /** clear only a structure-placement arm (used when arming rally instead) */
+  private cancelArmingStructureOnly(): void {
+    if (!this.armed) return;
+    this.armed = null;
+    this.disposeGhost();
+  }
+
+  private setRally(x: number, z: number): void {
+    this.ctx.store.state.base.rallyPoint = { x, z };
+    this.rallyArming = false;
+    this.ctx.store.changed();
+    this.syncRallyMarker();
+  }
+
+  private clearRally(): void {
+    this.ctx.store.state.base.rallyPoint = null;
+    this.ctx.store.changed();
+    this.syncRallyMarker();
+  }
+
+  /** create/move/remove the world rally flag to match state.base.rallyPoint */
+  private syncRallyMarker(): void {
+    const rally = this.ctx.store.state.base.rallyPoint;
+    if (!rally) {
+      if (this.rallyMesh) {
+        this.disposeSubtree(this.rallyMesh);
+        this.group.remove(this.rallyMesh);
+        this.rallyMesh = null;
+      }
+      return;
+    }
+    if (!this.rallyMesh) {
+      this.rallyMesh = buildRallyFlag();
+      this.group.add(this.rallyMesh);
+    }
+    this.rallyMesh.position.set(rally.x, this.terrain.heightAt(rally.x, rally.z), rally.z);
+  }
+
+  private disposeSubtree(obj: THREE.Object3D): void {
+    obj.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (m.geometry) m.geometry.dispose();
+      if (m.material) (Array.isArray(m.material) ? m.material : [m.material]).forEach((x) => x.dispose());
+    });
   }
 
   private disposeGhost(): void {
@@ -493,6 +561,18 @@ export class BaseView {
    * no drones are selected.
    */
   onCommandClick(raycaster: THREE.Raycaster, button: number): boolean {
+    if (this.rallyArming) {
+      if (button === 0) {
+        const hit = raycaster.intersectObjects(this.terrain.group.children, false)[0];
+        if (hit) this.setRally(hit.point.x, hit.point.z);
+        return true;
+      }
+      if (button === 2) {
+        this.rallyArming = false;
+        return true;
+      }
+      return false;
+    }
     if (this.armed) {
       if (button === 0) {
         this.commitPlacement(raycaster);
@@ -561,7 +641,14 @@ export class BaseView {
           (s.defId === 'nuclearGenerator' ? (isGeneratorRunning(s) ? 'N' : 'n') : ''),
       )
       .join('');
-    return `${this.selection.sig()}|${this.armed ?? ''}|${afford}|${statuses}#${this.ctx.store.state.base.structures.length}`;
+    const rally = this.ctx.store.state.base.rallyPoint;
+    const drones = this.ctx.store.state.base.drones;
+    return (
+      `${this.selection.sig()}|${this.armed ?? ''}|${this.rallyArming ? 'R' : ''}|${rally ? 'r' : ''}` +
+      `|${afford}|${statuses}#${this.ctx.store.state.base.structures.length}` +
+      // drone count so the rally controls appear/disappear with the roster
+      `|d${drones.length}`
+    );
   }
 
   /** appended into the surface panel: power readout + construction menu + inspector */
@@ -610,25 +697,37 @@ export class BaseView {
       menu.appendChild(row);
     }
 
+    // base drone controls: rally point (Phase 21) + find-idle (Phase 22).
+    // Shown once drones can exist here — a Fabricator stands, some drones are
+    // already out, or dev mode is on (so it's reachable before Phase 24 wiring)
+    const fab = store.state.base.structures.find((s) => s.status === 'active' && s.defId === 'fabricator');
+    const droneCapable = !!fab || store.state.base.drones.length > 0 || store.hasFlag(FLAGS.DEV_MODE);
+    if (droneCapable && this.hooks.isCommand()) {
+      const ctrl = box('Drones');
+      const rally = store.state.base.rallyPoint;
+      // toggling/setting/clearing rally flips panelSig, so SurfaceScreen
+      // rebuilds this panel next frame — no explicit re-render needed
+      const rallyBtn = button(
+        this.rallyArming ? 'Click ground to set…' : rally ? 'Move rally point' : 'Set rally point',
+        () => this.toggleRallyArm(),
+      );
+      if (this.rallyArming) rallyBtn.classList.add('active');
+      rallyBtn.title = 'New drones report to the rally point. Right-click or Esc cancels.';
+      ctrl.appendChild(rallyBtn);
+      if (rally) ctrl.appendChild(button('Clear rally', () => this.clearRally()));
+    }
+
     // dev-mode drone spawn: real production is wired to the Fabricator queue
     // at Phase 24 — until then, this is how movement/selection/orders get
     // exercised at all, same spirit as the per-structure dev-damage button
     if (store.hasFlag(FLAGS.DEV_MODE)) {
       const dev = box('Dev');
-      const fab = store.state.base.structures.find((s) => s.status === 'active' && s.defId === 'fabricator');
       const sx = fab ? fab.x + 2 : 0;
       const sz = fab ? fab.z + 2 : 0;
       for (const id of DRONE_IDS) {
         dev.appendChild(
           button(`Spawn ${DRONES[id].name} (dev)`, () => {
-            store.state.base.drones.push({
-              uid: store.uid('d'),
-              defId: id,
-              x: sx + (Math.random() - 0.5) * 2,
-              z: sz + (Math.random() - 0.5) * 2,
-              status: 'idle',
-              target: null,
-            });
+            spawnDrone(store, id, sx + (Math.random() - 0.5) * 2, sz + (Math.random() - 0.5) * 2);
             store.changed();
             this.syncDroneMeshes();
           }),

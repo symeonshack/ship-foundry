@@ -6,6 +6,7 @@ import {
   orderGather,
   orderMove,
   queueDrone,
+  spawnDrone,
   tickDroneMove,
   tickDroneTask,
   tickFabricator,
@@ -165,6 +166,23 @@ describe('orderMove / orderGather', () => {
       returnX: 7,
       returnZ: -2,
     });
+  });
+});
+
+describe('spawnDrone (rally point)', () => {
+  it('spawns idle when no rally point is set', () => {
+    const store = new GameStore(new EventBus(), createNewGame());
+    const d = spawnDrone(store, 'worker', 1, 2);
+    expect(store.state.base.drones).toContain(d);
+    expect(d).toMatchObject({ status: 'idle', target: null, x: 1, z: 2 });
+  });
+
+  it('sends the new drone to the rally point when one is set', () => {
+    const store = new GameStore(new EventBus(), createNewGame());
+    store.state.base.rallyPoint = { x: 30, z: -10 };
+    const d = spawnDrone(store, 'hauler', 0, 0);
+    expect(d.status).toBe('moving');
+    expect(d.target).toEqual({ x: 30, z: -10 });
   });
 });
 

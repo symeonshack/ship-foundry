@@ -660,6 +660,29 @@ export function buildDroneMesh(defId: DroneId): THREE.Group {
   return g;
 }
 
+/** rally-point marker (Phase 21): a slim pole with a pennant and a faint ground ring */
+export function buildRallyFlag(): THREE.Group {
+  const g = new THREE.Group();
+  const pole = cyl(0.04, 0.04, 2, mat(C.white, { metal: 0.4, rough: 0.5 }));
+  pole.position.y = 1;
+  g.add(pole);
+  const flag = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.7, 0.4),
+    mat(C.accent, { emissive: C.accent, emissiveIntensity: 0.6, flat: true, transparent: true, opacity: 0.9 }),
+  );
+  flag.material.side = THREE.DoubleSide;
+  flag.position.set(0.37, 1.75, 0);
+  g.add(flag);
+  const ring = new THREE.Mesh(
+    new THREE.TorusGeometry(0.7, 0.05, 8, 32),
+    mat(C.accent, { emissive: C.accent, emissiveIntensity: 0.4, transparent: true, opacity: 0.5 }),
+  );
+  ring.rotation.x = Math.PI / 2;
+  ring.position.y = 0.06;
+  g.add(ring);
+  return g;
+}
+
 // ---- site landmarks (Phase 3: distinct regions worth finding) ----
 
 export type SiteLandmarkKind = 'spires' | 'crater' | 'wreck' | 'vent';

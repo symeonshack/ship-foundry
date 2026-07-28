@@ -68,6 +68,20 @@ export const DRONES: Record<DroneId, DroneDef> = {
 
 export const DRONE_IDS = Object.keys(DRONES) as DroneId[];
 
+/**
+ * Create a drone at (x, z) and push it onto base state. If a rally point is
+ * set it immediately reports there (Phase 21) — the "default destination for
+ * new drones." Used by the dev-spawn panel now; the Fabricator-completion
+ * path (Phase 24) will call this same helper.
+ */
+export function spawnDrone(store: GameStore, defId: DroneId, x: number, z: number): DroneInstance {
+  const drone: DroneInstance = { uid: store.uid('d'), defId, x, z, status: 'idle', target: null };
+  store.state.base.drones.push(drone);
+  const rally = store.state.base.rallyPoint;
+  if (rally) orderMove(drone, rally.x, rally.z);
+  return drone;
+}
+
 function scaleCost(cost: ResourceCost, n: number): ResourceCost {
   const out: ResourceCost = {};
   for (const [id, amt] of Object.entries(cost)) out[id as keyof ResourceCost] = (amt ?? 0) * n;
