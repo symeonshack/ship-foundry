@@ -10,9 +10,10 @@
 import { BALANCE } from '../config/balance';
 import { FLAGS } from '../core/flags';
 import type { GameStore } from '../core/state';
-import { canRepair, repairCost, tickConstruction, tickRepair, type StructureInstance } from './structures';
+import { STRUCTURES, canRepair, repairCost, tickConstruction, tickRepair, type StructureInstance } from './structures';
 import { isGeneratorRunning, tickNuclear, tickSolar } from './power';
-import { tickFabricator } from './drones';
+import { tickDroneMove, tickFabricator } from './drones';
+import { footprintAt } from './placement';
 
 /** notify (and re-render) at most this often for continuous numeric drift —
  * fuel drain, isotope burn — the top bar doesn't need 60fps precision, and
@@ -92,6 +93,15 @@ export class BaseSim {
         this.store.bus.emit('drone:produced', { defId });
         transitions = true;
       }
+    }
+
+    // drone movement toward a manual order: continuous drift like HP/dust,
+    // read live by the renderer — only arrival is a real transition.
+    // Colliders are recomputed from live structure state rather than shared
+    // with BaseView, since this sim must keep running with no view attached.
+    const droneColliders = this.store.state.base.structures.map((s) => footprintAt(STRUCTURES[s.defId], s.x, s.z));
+    for (const d of this.store.state.base.drones) {
+      if (tickDroneMove(d, dt, droneColliders) === 'arrived') transitions = true;
     }
 
     if (isotopeConsumed) {

@@ -8,8 +8,9 @@ import {
 } from './resources';
 import type { PartId } from '../building/partCatalog';
 import type { StructureInstance } from '../base/structures';
+import type { DroneInstance } from '../base/drones';
 
-export type { StructureInstance };
+export type { StructureInstance, DroneInstance };
 
 export interface PartPlacement {
   uid: string;
@@ -83,21 +84,14 @@ export interface StructureState {
 
 /**
  * Landing Zone base-building state (mining-ops Landing Zone plan).
- * `StructureInstance` is the real catalog-backed shape from
- * `src/base/structures.ts`; `DroneInstance` stays a stub until Phase 19.
+ * `StructureInstance` and `DroneInstance` are the real catalog-backed shapes
+ * from `src/base/structures.ts` and `src/base/drones.ts` respectively.
  *
  * Deliberately a top-level `GameState` field, not nested under `pois.foundry`:
  * Landing Zone is semantically singular and must keep simulating every frame
  * regardless of which screen is active, unlike per-POI fields that only
  * matter while that POI's own screen instance is alive.
  */
-export interface DroneInstance {
-  uid: string;
-  type: string;
-  x: number;
-  z: number;
-}
-
 export interface BaseState {
   structures: StructureInstance[];
   drones: DroneInstance[];

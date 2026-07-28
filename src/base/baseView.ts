@@ -20,6 +20,7 @@ import type { Ctx } from '../core/ctx';
 import type { ChunkedTerrain } from '../terrain/chunkManager';
 import type { Collider } from '../interior/playerController';
 import {
+  buildDroneMesh,
   buildFoundryStructureMesh,
   buildLaunchPadMesh,
   buildNuclearGeneratorMesh,
@@ -33,6 +34,7 @@ import {
   buildStructureRubble,
   mulberry32,
 } from '../scene/primitives';
+import { DRONES, DRONE_IDS } from './drones';
 import {
   STRUCTURES,
   STRUCTURE_IDS,
@@ -97,8 +99,10 @@ export class BaseView {
   /** every Landing-Zone mesh lives under this group — owned and disposed here */
   readonly group = new THREE.Group();
   private structureGroup = new THREE.Group();
+  private droneGroup = new THREE.Group();
   private ringGroup = new THREE.Group();
   private meshByUid = new Map<string, THREE.Group>();
+  private droneMeshByUid = new Map<string, THREE.Group>();
   private structureColliders = new Map<string, Collider>();
   private selection = new SelectionController();
   private boxEl: HTMLElement;
@@ -122,6 +126,7 @@ export class BaseView {
   ) {
     this.group.name = 'landing-zone-base';
     this.group.add(this.structureGroup);
+    this.group.add(this.droneGroup);
     this.group.add(this.ringGroup);
     scene.add(this.group);
 
@@ -138,6 +143,7 @@ export class BaseView {
     window.addEventListener('pointerup', this.onPointerUp, true);
 
     this.syncMeshes();
+    this.syncDroneMeshes();
   }
 
   // ---- selection box (Shift + left-drag) ----
@@ -181,15 +187,21 @@ export class BaseView {
     this.boxEl.style.height = `${Math.abs(ev.clientY - this.dragStart.y)}px`;
   }
 
-  /** all selectable entities projected to screen px (drones join at Phase 19) */
+  /** all selectable entities (structures + drones) projected to screen px */
   private projectSelectables(): { uid: string; px: Px }[] {
     const out: { uid: string; px: Px }[] = [];
     const v = new THREE.Vector3();
+    const project = (uid: string, x: number, y: number, z: number): void => {
+      v.set(x, y, z).project(this.camera);
+      if (v.z > 1) return; // behind the camera
+      out.push({ uid, px: { x: ((v.x + 1) / 2) * window.innerWidth, y: ((1 - v.y) / 2) * window.innerHeight } });
+    };
     for (const s of this.ctx.store.state.base.structures) {
       if (s.status === 'destroyed') continue;
-      v.set(s.x, this.terrain.heightAt(s.x, s.z) + 0.8, s.z).project(this.camera);
-      if (v.z > 1) continue; // behind the camera
-      out.push({ uid: s.uid, px: { x: ((v.x + 1) / 2) * window.innerWidth, y: ((1 - v.y) / 2) * window.innerHeight } });
+      project(s.uid, s.x, this.terrain.heightAt(s.x, s.z) + 0.8, s.z);
+    }
+    for (const d of this.ctx.store.state.base.drones) {
+      project(d.uid, d.x, this.terrain.heightAt(d.x, d.z) + 0.4, d.z);
     }
     return out;
   }
@@ -352,8 +364,37 @@ export class BaseView {
       this.structureColliders.set(s.uid, collider);
       this.footColliders.push(collider);
     }
-    // drop selections whose structure no longer stands
-    const live = new Set(this.meshByUid.keys());
+    this.pruneDeadSelection();
+  }
+
+  /** rebuild the drone mesh set to match state.base.drones — add/remove only;
+   * positions are synced continuously in update(), not rebuilt here */
+  private syncDroneMeshes(): void {
+    const live = new Set(this.ctx.store.state.base.drones.map((d) => d.uid));
+    for (const [uid, mesh] of [...this.droneMeshByUid]) {
+      if (live.has(uid)) continue;
+      mesh.traverse((o) => {
+        const m = o as THREE.Mesh;
+        if (m.geometry) m.geometry.dispose();
+        if (m.material) (Array.isArray(m.material) ? m.material : [m.material]).forEach((x) => x.dispose());
+      });
+      this.droneGroup.remove(mesh);
+      this.droneMeshByUid.delete(uid);
+    }
+    for (const d of this.ctx.store.state.base.drones) {
+      if (this.droneMeshByUid.has(d.uid)) continue;
+      const mesh = buildDroneMesh(d.defId);
+      mesh.position.set(d.x, this.terrain.heightAt(d.x, d.z), d.z);
+      mesh.userData.droneUid = d.uid;
+      this.droneGroup.add(mesh);
+      this.droneMeshByUid.set(d.uid, mesh);
+    }
+    this.pruneDeadSelection();
+  }
+
+  /** drop selected uids whose structure/drone no longer exists, and refresh rings */
+  private pruneDeadSelection(): void {
+    const live = new Set([...this.meshByUid.keys(), ...this.droneMeshByUid.keys()]);
     this.selection.replace([...this.selection.selected].filter((u) => live.has(u)));
     this.syncSelectionRings();
   }
@@ -378,12 +419,20 @@ export class BaseView {
     }
     for (const uid of this.selection.selected) {
       const inst = this.ctx.store.state.base.structures.find((s) => s.uid === uid);
-      const mesh = this.meshByUid.get(uid);
-      if (!inst || !mesh) continue;
-      const def = STRUCTURES[inst.defId];
-      // translucent ring while under construction, solid once complete
-      const ring = buildSelectionRing(Math.max(def.footprint.w, def.footprint.d) * 0.72, inst.status === 'active');
-      ring.position.set(inst.x, this.terrain.heightAt(inst.x, inst.z) + 0.12, inst.z);
+      if (inst) {
+        const mesh = this.meshByUid.get(uid);
+        if (!mesh) continue;
+        const def = STRUCTURES[inst.defId];
+        // translucent ring while under construction, solid once complete
+        const ring = buildSelectionRing(Math.max(def.footprint.w, def.footprint.d) * 0.72, inst.status === 'active');
+        ring.position.set(inst.x, this.terrain.heightAt(inst.x, inst.z) + 0.12, inst.z);
+        this.ringGroup.add(ring);
+        continue;
+      }
+      const d = this.ctx.store.state.base.drones.find((dr) => dr.uid === uid);
+      if (!d || !this.droneMeshByUid.has(uid)) continue;
+      const ring = buildSelectionRing(0.55, true);
+      ring.position.set(d.x, this.terrain.heightAt(d.x, d.z) + 0.08, d.z);
       this.ringGroup.add(ring);
     }
   }
@@ -411,6 +460,17 @@ export class BaseView {
         break;
       }
     }
+    // drones move every tick (BaseSim owns the actual motion) — add/remove
+    // meshes when the roster changes, then just re-read position each frame
+    if (this.droneMeshByUid.size !== this.ctx.store.state.base.drones.length) this.syncDroneMeshes();
+    let selectionMoved = false;
+    for (const d of this.ctx.store.state.base.drones) {
+      const mesh = this.droneMeshByUid.get(d.uid);
+      if (!mesh) continue;
+      mesh.position.set(d.x, this.terrain.heightAt(d.x, d.z), d.z);
+      if (this.selection.selected.has(d.uid)) selectionMoved = true;
+    }
+    if (selectionMoved) this.syncSelectionRings();
     for (const fn of this.panelUpdaters) fn();
   }
 
@@ -418,8 +478,9 @@ export class BaseView {
 
   /**
    * Command-mode click, tried before the rig-arming flow. While placing:
-   * left commits, right cancels. Otherwise: left selects a structure (or
-   * clears on empty ground), right is the reserved command channel.
+   * left commits, right cancels. Otherwise: left selects a structure or
+   * drone (or clears on empty ground); right issues a move order to any
+   * selected drones (Phase 19), or is a no-op if none are selected.
    */
   onCommandClick(raycaster: THREE.Raycaster, button: number): boolean {
     if (this.armed) {
@@ -433,14 +494,28 @@ export class BaseView {
       }
       return false;
     }
-    if (button === 2) return true; // reserved: drone orders from Phase 19
+    if (button === 2) {
+      const orderedDrones = this.ctx.store.state.base.drones.filter((d) => this.selection.selected.has(d.uid));
+      if (orderedDrones.length > 0) {
+        const hit = raycaster.intersectObjects(this.terrain.group.children, false)[0];
+        if (hit) {
+          for (const d of orderedDrones) {
+            d.target = { x: hit.point.x, z: hit.point.z };
+            d.status = 'moving';
+          }
+          this.ctx.store.changed();
+        }
+      }
+      return true;
+    }
     if (button !== 0) return false;
-    const hit = raycaster.intersectObjects(this.structureGroup.children, true)[0];
+    const hit = raycaster.intersectObjects([...this.structureGroup.children, ...this.droneGroup.children], true)[0];
     if (hit) {
       let node: THREE.Object3D | null = hit.object;
-      while (node && !node.userData.structureUid) node = node.parent;
-      if (node) {
-        if (this.selection.replace([node.userData.structureUid as string])) this.syncSelectionRings();
+      while (node && !node.userData.structureUid && !node.userData.droneUid) node = node.parent;
+      const uid = node ? ((node.userData.structureUid ?? node.userData.droneUid) as string | undefined) : undefined;
+      if (uid) {
+        if (this.selection.replace([uid])) this.syncSelectionRings();
         return true;
       }
     }
@@ -518,6 +593,32 @@ export class BaseView {
       menu.appendChild(row);
     }
 
+    // dev-mode drone spawn: real production is wired to the Fabricator queue
+    // at Phase 24 — until then, this is how movement/selection/orders get
+    // exercised at all, same spirit as the per-structure dev-damage button
+    if (store.hasFlag(FLAGS.DEV_MODE)) {
+      const dev = box('Dev');
+      const fab = store.state.base.structures.find((s) => s.status === 'active' && s.defId === 'fabricator');
+      const sx = fab ? fab.x + 2 : 0;
+      const sz = fab ? fab.z + 2 : 0;
+      for (const id of DRONE_IDS) {
+        dev.appendChild(
+          button(`Spawn ${DRONES[id].name} (dev)`, () => {
+            store.state.base.drones.push({
+              uid: store.uid('d'),
+              defId: id,
+              x: sx + (Math.random() - 0.5) * 2,
+              z: sz + (Math.random() - 0.5) * 2,
+              status: 'idle',
+              target: null,
+            });
+            store.changed();
+            this.syncDroneMeshes();
+          }),
+        );
+      }
+    }
+
     // on-site refining: the shared refinery queue, available at the base only
     // once a Refinery structure stands (its panel is what makes raw → refined
     // possible here rather than only back at the shipyard)
@@ -536,8 +637,22 @@ export class BaseView {
 
     if (this.selection.selected.size > 0) {
       const structures = store.state.base.structures;
-      const b = box(this.selection.selected.size === 1 ? 'Structure' : `Selected ×${this.selection.selected.size}`);
+      const b = box(this.selection.selected.size > 1 ? `Selected ×${this.selection.selected.size}` : 'Selected');
       for (const uid of this.selection.selected) {
+        const drone = store.state.base.drones.find((d) => d.uid === uid);
+        if (drone) {
+          const def = DRONES[drone.defId];
+          const row = el('div', 'row');
+          row.appendChild(el('span', 'grow', def.name));
+          const status = el('span', 'sub', '');
+          row.appendChild(status);
+          b.appendChild(row);
+          this.panelUpdaters.push(() => {
+            status.textContent = drone.status === 'moving' ? 'moving' : 'idle';
+          });
+          b.appendChild(el('div', 'sub', def.desc));
+          continue;
+        }
         const inst = structures.find((s) => s.uid === uid);
         if (!inst) continue;
         const def = STRUCTURES[inst.defId];

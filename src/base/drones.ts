@@ -1,14 +1,33 @@
 /**
- * Drone catalog + the Fabricator's production queue (Landing Zone plan,
- * Phase 17). Catalog-only for now — a completed job announces itself
- * ("Worker Drone ready") but doesn't spawn a world entity; real `DroneInstance`s
- * with movement and tasks land in Phase 19, wired to this queue in Phase 24.
+ * Drone catalog, the Fabricator's production queue (Phase 17), and real
+ * world-entity movement (Phase 19). A `DroneInstance` exists, can be
+ * selected, and can be given a manual move order. Spawning one from a
+ * completed Fabricator job is still Phase 24 — until then, `BaseView`'s
+ * dev-mode panel spawns one directly so movement/selection/orders can
+ * actually be exercised.
  */
+import type { Collider } from '../interior/playerController';
+import { moveWithCollision } from '../interior/playerController';
 import type { ResourceCost } from '../core/resources';
 import type { GameStore } from '../core/state';
+import { BALANCE } from '../config/balance';
 import type { FabricationJob, StructureInstance } from './structures';
 
 export type DroneId = 'worker' | 'hauler';
+
+/** a real, movable, selectable world unit produced by a Fabricator */
+export interface DroneInstance {
+  uid: string;
+  defId: DroneId;
+  x: number;
+  z: number;
+  status: 'idle' | 'moving';
+  /** manual move-order destination; cleared on arrival */
+  target: { x: number; z: number } | null;
+}
+
+/** distance under which a drone counts as having arrived at its target */
+const ARRIVE_EPS = 0.05;
 
 export interface DroneDef {
   id: DroneId;
@@ -79,4 +98,36 @@ export function tickFabricator(inst: StructureInstance, dt: number): DroneId[] {
   }
   if (job.unitsDone >= job.unitsTotal) queue.shift();
   return completed;
+}
+
+/**
+ * Advance a drone toward its move-order target by dt seconds, sliding along
+ * structure footprints the same way the interior player does. Returns
+ * `'arrived'` the tick it reaches the target (a real transition worth
+ * announcing/refreshing the panel over); ongoing travel is continuous drift,
+ * read live by the renderer, like HP/dust/isotope burn elsewhere.
+ */
+export function tickDroneMove(inst: DroneInstance, dt: number, colliders: Collider[]): 'arrived' | null {
+  if (inst.status !== 'moving' || !inst.target) return null;
+  const target = inst.target;
+  const dx = target.x - inst.x;
+  const dz = target.z - inst.z;
+  const dist = Math.hypot(dx, dz);
+  if (dist > ARRIVE_EPS) {
+    const cfg = BALANCE.landingZone.drones;
+    const step = Math.min(dist, cfg.moveSpeed * dt);
+    const next = moveWithCollision({ x: inst.x, z: inst.z }, (dx / dist) * step, (dz / dist) * step, colliders, cfg.radius);
+    inst.x = next.x;
+    inst.z = next.z;
+  }
+  // arrival is checked after moving too, so a single large-dt step that
+  // covers the remaining distance reports 'arrived' the same tick
+  if (Math.hypot(target.x - inst.x, target.z - inst.z) <= ARRIVE_EPS) {
+    inst.x = target.x;
+    inst.z = target.z;
+    inst.status = 'idle';
+    inst.target = null;
+    return 'arrived';
+  }
+  return null;
 }

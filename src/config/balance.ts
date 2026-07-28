@@ -179,6 +179,13 @@ export const BALANCE = {
         isotopeBurnPerSec: 0.02,
       },
     },
+    /** drone unit movement (Phase 19) — per-type costs/build times live in the catalog, src/base/drones.ts */
+    drones: {
+      /** ground speed, world units/sec, moving toward a manual order */
+      moveSpeed: 3,
+      /** collision radius against structure footprints, same scale as the player */
+      radius: 0.4,
+    },
   },
 
   /** The #terrain proof-of-concept range (dev harness screen, not a gameplay site). */

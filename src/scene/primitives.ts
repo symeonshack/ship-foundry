@@ -10,6 +10,7 @@ import type { RigType } from '../building/partCatalog';
 import type { RawResourceId } from '../core/resources';
 import { RESOURCES } from '../core/resources';
 import type { EncounterModuleType } from '../core/state';
+import type { DroneId } from '../base/drones';
 import { makeHeightField } from '../terrain/heightfield';
 
 // ---- shared materials ----
@@ -632,6 +633,31 @@ export function buildSelectionRing(radius: number, solid = true): THREE.Mesh {
   );
   ring.rotation.x = Math.PI / 2;
   return ring;
+}
+
+// ---- drones (Phase 19: real, movable, selectable world units) ----
+
+export function buildDroneMesh(defId: DroneId): THREE.Group {
+  const g = new THREE.Group();
+  const body = mat(defId === 'hauler' ? C.hull : C.hullDark, { flat: true });
+  const frame = mat(C.frame);
+  if (defId === 'hauler') {
+    g.add(at(box(0.6, 0.4, 0.9, body), 0, 0.35, 0));
+    for (const [sx, sz] of [[-0.3, 0.32], [0.3, 0.32], [-0.3, -0.32], [0.3, -0.32]]) {
+      g.add(at(cyl(0.1, 0.1, 0.16, frame, 10), sx!, 0.1, sz!));
+    }
+  } else {
+    g.add(at(box(0.42, 0.32, 0.42, body), 0, 0.3, 0));
+    const arm = cyl(0.045, 0.045, 0.4, frame);
+    arm.rotation.z = Math.PI / 2.3;
+    arm.position.set(0.28, 0.42, 0);
+    g.add(arm);
+  }
+  const lamp = sph(0.06, mat(C.accent, { emissive: C.accent, emissiveIntensity: 0.9 }));
+  lamp.name = 'lamp';
+  lamp.position.set(0, defId === 'hauler' ? 0.58 : 0.48, 0);
+  g.add(lamp);
+  return g;
 }
 
 // ---- site landmarks (Phase 3: distinct regions worth finding) ----

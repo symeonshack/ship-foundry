@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { EventBus } from '../../src/core/events';
 import { createNewGame, GameStore } from '../../src/core/state';
-import { DRONES, queueDrone, tickFabricator } from '../../src/base/drones';
+import { DRONES, queueDrone, tickDroneMove, tickFabricator, type DroneInstance } from '../../src/base/drones';
 import type { StructureInstance } from '../../src/base/structures';
+import { BALANCE } from '../../src/config/balance';
 
 const fabricator = (over: Partial<StructureInstance> = {}): StructureInstance => ({
   uid: 'f1',
@@ -88,5 +89,51 @@ describe('tickFabricator', () => {
     expect(tickFabricator(fabricator(), 10)).toEqual([]);
     expect(tickFabricator(fabricator({ status: 'building', queue: [{ defId: 'worker', unitsTotal: 1, unitsDone: 0, progressSec: 0 }] }), 100)).toEqual([]);
     expect(tickFabricator(fabricator({ defId: 'storageSilo', queue: [{ defId: 'worker', unitsTotal: 1, unitsDone: 0, progressSec: 0 }] }), 100)).toEqual([]);
+  });
+});
+
+const idleDrone = (over: Partial<DroneInstance> = {}): DroneInstance => ({
+  uid: 'd1',
+  defId: 'worker',
+  x: 0,
+  z: 0,
+  status: 'idle',
+  target: null,
+  ...over,
+});
+
+describe('tickDroneMove', () => {
+  it('does nothing to an idle drone with no target', () => {
+    const d = idleDrone();
+    tickDroneMove(d, 1, []);
+    expect(d).toEqual(idleDrone());
+  });
+
+  it('steps toward the target at the configured speed', () => {
+    const d = idleDrone({ status: 'moving', target: { x: 10, z: 0 } });
+    const dt = 0.5;
+    tickDroneMove(d, dt, []);
+    expect(d.x).toBeCloseTo(BALANCE.landingZone.drones.moveSpeed * dt);
+    expect(d.z).toBeCloseTo(0);
+    expect(d.status).toBe('moving');
+  });
+
+  it('arrives exactly at the target and clears status/target once within reach', () => {
+    const d = idleDrone({ status: 'moving', target: { x: 1, z: 0 } });
+    // one huge tick easily covers the remaining distance
+    const result = tickDroneMove(d, 10, []);
+    expect(result).toBe('arrived');
+    expect(d.x).toBe(1);
+    expect(d.z).toBe(0);
+    expect(d.status).toBe('idle');
+    expect(d.target).toBeNull();
+  });
+
+  it('is blocked by a structure footprint instead of passing through it', () => {
+    const wall = { minX: 1, maxX: 2, minZ: -5, maxZ: 5 };
+    const d = idleDrone({ x: 0.5, status: 'moving', target: { x: 10, z: 0 } });
+    tickDroneMove(d, 0.1, [wall]); // candidate x 0.8 + radius pierces the wall at 1
+    expect(d.x).toBe(0.5);
+    expect(d.status).toBe('moving'); // still trying — never reaches the far-side target
   });
 });
