@@ -21,7 +21,9 @@ import type { ChunkedTerrain } from '../terrain/chunkManager';
 import type { Collider } from '../interior/playerController';
 import {
   buildDroneMesh,
+  buildFabricatorMesh,
   buildFoundryStructureMesh,
+  buildGreenhouseMesh,
   buildLaunchPadMesh,
   buildNuclearGeneratorMesh,
   buildRallyFlag,
@@ -29,6 +31,7 @@ import {
   buildRelayMesh,
   buildSelectionRing,
   buildSiloMesh,
+  buildSoilProcessorMesh,
   buildSolarArrayMesh,
   buildStructureGhost,
   buildStructurePlaceholder,
@@ -70,6 +73,9 @@ const FINISHED_BUILDERS: Partial<Record<StructureId, (w: number, d: number, colo
   nuclearGenerator: buildNuclearGeneratorMesh,
   foundry: buildFoundryStructureMesh,
   launchPad: buildLaunchPadMesh,
+  fabricator: buildFabricatorMesh,
+  greenhouse: buildGreenhouseMesh,
+  soilProcessor: buildSoilProcessorMesh,
 };
 
 /** stable per-wreck seed so a given pile of rubble looks the same every rebuild */

@@ -359,20 +359,51 @@ export function buildRock(rand: () => number): THREE.Mesh {
   return rock;
 }
 
+/** the descent craft standing on the surface — the boardable lander, matched
+ * to its interior (canted cabin) and the overhauled ship aesthetic */
 export function buildLander(): THREE.Group {
   const g = new THREE.Group();
-  g.add(at(cyl(0.9, 1.1, 0.9, mat(C.hull, { flat: true }), 8), 0, 1.0, 0));
-  g.add(at(cyl(0.5, 0.7, 0.5, mat(C.hullDark), 8), 0, 1.7, 0));
+  const hull = mat(C.hull, { flat: true });
+  const dark = mat(C.hullDark, { metal: 0.4 });
+  const band = mat(C.frame, { metal: 0.5, rough: 0.5 });
+  const tankMat = mat(0x8a949c, { metal: 0.5, rough: 0.4 });
+  // lower descent stage: wide tapered body with frame banding
+  g.add(at(cyl(1.05, 1.28, 1.0, hull, 12), 0, 1.0, 0));
+  g.add(at(cyl(1.32, 1.32, 0.14, band, 12), 0, 0.6, 0));
+  g.add(at(cyl(1.32, 1.32, 0.14, band, 12), 0, 1.4, 0));
+  // propellant tanks wrapped around the waist
   for (let i = 0; i < 4; i++) {
     const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
-    const leg = cyl(0.06, 0.06, 1.2, mat(C.frame));
-    leg.position.set(Math.cos(a) * 1.1, 0.45, Math.sin(a) * 1.1);
-    leg.rotation.set(Math.sin(a) * 0.5, 0, -Math.cos(a) * 0.5);
-    g.add(leg);
-    g.add(at(cyl(0.18, 0.22, 0.08, mat(C.frame)), Math.cos(a) * 1.38, 0.04, Math.sin(a) * 1.38));
+    g.add(at(cyl(0.22, 0.22, 0.9, tankMat, 10), Math.cos(a) * 1.18, 1.0, Math.sin(a) * 1.18));
   }
-  g.add(at(cyl(0.03, 0.03, 0.9, mat(C.frame)), 0.3, 2.4, 0));
-  g.add(at(sph(0.06, mat(C.accent, { emissive: C.accent, emissiveIntensity: 1 })), 0.3, 2.9, 0));
+  // engine bells tucked underneath
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * Math.PI * 2;
+    g.add(at(cyl(0.28, 0.15, 0.42, band, 12), Math.cos(a) * 0.42, 0.3, Math.sin(a) * 0.42));
+  }
+  // crew cabin up top with a canted, lit canopy
+  g.add(at(box(1.24, 0.12, 1.04, band), 0, 1.62, 0.05));
+  g.add(at(box(1.2, 0.95, 1.0, hull), 0, 2.15, 0.05));
+  const canopy = at(box(0.92, 0.52, 0.12, mat(C.accent, { emissive: C.accent, emissiveIntensity: 0.5 })), 0, 2.28, 0.6);
+  canopy.rotation.x = -0.32;
+  g.add(canopy);
+  // rear boarding hatch with a lit lintel
+  g.add(at(box(0.56, 0.72, 0.1, dark), 0, 1.98, -0.56));
+  g.add(at(box(0.6, 0.08, 0.1, mat(C.amber, { emissive: C.amber, emissiveIntensity: 0.45 })), 0, 2.38, -0.55));
+  // landing legs + footpads
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
+    const leg = cyl(0.07, 0.07, 1.5, band);
+    leg.position.set(Math.cos(a) * 1.25, 0.5, Math.sin(a) * 1.25);
+    leg.rotation.set(Math.sin(a) * 0.55, 0, -Math.cos(a) * 0.55);
+    g.add(leg);
+    g.add(at(cyl(0.24, 0.3, 0.1, band, 10), Math.cos(a) * 1.62, 0.04, Math.sin(a) * 1.62));
+  }
+  // antenna mast + beacon, nav lights
+  g.add(at(cyl(0.03, 0.03, 0.7, band), 0.42, 2.75, -0.2));
+  g.add(at(sph(0.06, mat(C.accent, { emissive: C.accent, emissiveIntensity: 1 })), 0.42, 3.12, -0.2));
+  g.add(at(sph(0.05, mat(C.green, { emissive: C.green, emissiveIntensity: 0.9 })), 1.18, 2.05, 0.32));
+  g.add(at(sph(0.05, mat(C.red, { emissive: C.red, emissiveIntensity: 0.9 })), -1.18, 2.05, 0.32));
   return g;
 }
 
@@ -498,55 +529,102 @@ export function buildStructurePlaceholder(
  * placeholder above. Each sits on the same foundation slab as the placeholder
  * so the two read as the same object at different life stages.
  */
+/** the foundation slab every finished structure shares */
+function slab(w: number, d: number): THREE.Mesh {
+  return at(box(w, 0.25, d, mat(C.frame)), 0, 0.125, 0);
+}
+/** a small emissive indicator light */
+function lamp(color: number, r = 0.07, i = 0.9): THREE.Mesh {
+  return sph(r, mat(color, { emissive: color, emissiveIntensity: i }));
+}
+/** a hazard-stripe torus band used on skirts/pads */
+function stripeBand(r: number, tube = 0.05): THREE.Mesh {
+  const t = new THREE.Mesh(new THREE.TorusGeometry(r, tube, 6, 28), mat(0xd8b23c, { emissive: 0xd8b23c, emissiveIntensity: 0.2, rough: 0.6 }));
+  t.rotation.x = Math.PI / 2;
+  return t;
+}
+
 export function buildSiloMesh(w: number, d: number, color: number): THREE.Group {
   const g = new THREE.Group();
-  const frame = mat(C.frame);
-  g.add(at(box(w, 0.25, d, frame), 0, 0.125, 0));
-  const tank = mat(color, { flat: true, rough: 0.6, metal: 0.4 });
-  const r = Math.min(w, d) * 0.22;
-  for (const sx of [-0.28, 0.28] as const) {
-    g.add(at(cyl(r, r, 1.3, tank, 12), w * sx, 0.9, 0));
-    g.add(at(sph(r, tank, 12), w * sx, 1.55, 0));
+  const band = mat(C.frame, { metal: 0.5, rough: 0.5 });
+  g.add(slab(w, d));
+  const tank = mat(color, { flat: true, rough: 0.55, metal: 0.45 });
+  const steel = mat(0x8a949c, { metal: 0.5, rough: 0.4 });
+  const r = Math.min(w, d) * 0.2;
+  // three vertical silos of staggered height, ringed with banding and domed
+  const spots: [number, number, number][] = [[-0.26, -0.18, 1.55], [0.28, -0.16, 1.35], [0.02, 0.3, 1.15]];
+  for (const [sx, sz, h] of spots) {
+    const x = w * sx;
+    const z = d * sz;
+    g.add(at(cyl(r, r, h, tank, 14), x, 0.25 + h / 2, z));
+    for (const f of [0.35, 0.65, 0.95]) g.add(at(cyl(r * 1.05, r * 1.05, 0.07, band, 14), x, 0.25 + h * f, z));
+    g.add(at(sph(r, tank, 14), x, 0.25 + h, z));
+    g.add(at(cyl(0.045, 0.045, 0.28, band), x, 0.25 + h + r + 0.1, z)); // vent stack
   }
-  g.add(at(box(w * 0.9, 0.12, 0.2, frame), 0, 1.0, 0));
-  g.add(at(sph(0.08, mat(color, { emissive: color, emissiveIntensity: 0.8 })), w * 0.36, 1.7, d * 0.3));
+  // base manifold + valve wheels tying the silos together
+  g.add(at(box(w * 0.9, 0.16, 0.14, band), 0, 0.55, -d * 0.1));
+  for (const [sx, , ] of spots) g.add(at(cyl(0.09, 0.09, 0.12, steel, 8), w * sx, 0.62, -d * 0.1));
+  // lit fill-gauge on the tallest silo
+  g.add(at(box(0.05, 0.7, 0.12, mat(color, { emissive: color, emissiveIntensity: 0.7 })), w * -0.26 - r, 0.95, d * -0.18));
+  // access ladder
+  for (let i = 0; i < 5; i++) g.add(at(box(0.18, 0.03, 0.03, band), w * 0.28, 0.4 + i * 0.28, d * -0.16 - r));
+  g.add(at(lamp(color), w * 0.36, 0.5, d * 0.34));
   return g;
 }
 
 export function buildSolarArrayMesh(w: number, d: number, color: number): THREE.Group {
   const g = new THREE.Group();
-  const frame = mat(C.frame);
-  g.add(at(box(w, 0.25, d, frame), 0, 0.125, 0));
-  const panelMat = mat(0x2c4a6e, { metal: 0.6, rough: 0.3 });
-  for (const sx of [-0.25, 0.25] as const) {
-    g.add(at(cyl(0.05, 0.05, 0.6, frame, 6), w * sx, 0.4, 0));
-    const panel = at(box(w * 0.42, 0.06, d * 0.72, panelMat), w * sx, 0.78, 0);
-    panel.rotation.x = -0.5;
-    g.add(panel);
+  const band = mat(C.frame, { metal: 0.5, rough: 0.5 });
+  g.add(slab(w, d));
+  const cell = mat(0x21406a, { metal: 0.65, rough: 0.28 });
+  const gridline = mat(0x0e1a30, { rough: 0.5 });
+  // a tracker mast carrying two rows of gridded panel wings
+  g.add(at(cyl(0.08, 0.1, 0.7, band, 8), 0, 0.55, 0));
+  g.add(at(cyl(0.14, 0.14, 0.12, band, 10), 0, 0.9, 0)); // pivot hub
+  for (const sx of [-0.26, 0.26] as const) {
+    for (const sz of [-0.32, 0.32] as const) {
+      const wing = new THREE.Group();
+      wing.add(at(box(w * 0.4, 0.05, d * 0.46, cell), 0, 0, 0));
+      // cell grid lines
+      for (let i = -1; i <= 1; i++) wing.add(at(box(w * 0.4, 0.06, 0.015, gridline), 0, 0.001, i * d * 0.14));
+      for (let i = -1; i <= 1; i++) wing.add(at(box(0.015, 0.06, d * 0.46, gridline), i * w * 0.12, 0.001, 0));
+      wing.position.set(w * sx, 0.95, d * sz);
+      wing.rotation.x = -0.5;
+      g.add(wing);
+    }
   }
-  g.add(at(sph(0.08, mat(color, { emissive: color, emissiveIntensity: 0.7 })), w * 0.4, 0.5, d * 0.38));
+  // junction box + status lamp + cabling
+  g.add(at(box(0.3, 0.34, 0.24, mat(C.hullDark, { flat: true })), w * 0.36, 0.42, d * 0.36));
+  g.add(at(lamp(color, 0.06), w * 0.36, 0.62, d * 0.36));
   return g;
 }
 
 export function buildNuclearGeneratorMesh(w: number, d: number, color: number): THREE.Group {
   const g = new THREE.Group();
-  const frame = mat(C.frame);
-  g.add(at(box(w, 0.25, d, frame), 0, 0.125, 0));
-  // containment dome + hazard-striped skirt
+  g.add(slab(w, d));
   const hull = mat(0x6b6560, { flat: true, rough: 0.6, metal: 0.5 });
-  const r = Math.min(w, d) * 0.32;
-  g.add(at(cyl(r, r * 1.08, 1.1, hull, 14), 0, 0.8, 0));
-  g.add(at(sph(r, hull, 14), 0, 1.35, 0));
-  const stripe = mat(0x1a1a1a, { flat: true, rough: 0.9 });
-  g.add(at(cyl(r * 1.03, r * 1.03, 0.16, stripe, 14), 0, 0.35, 0));
-  // cooling fins
-  for (let i = 0; i < 4; i++) {
-    const a = (i / 4) * Math.PI * 2;
-    const fin = at(box(0.06, 0.9, r * 0.7, mat(0x8a949c, { metal: 0.6, rough: 0.4 })), Math.cos(a) * r * 1.15, 0.8, Math.sin(a) * r * 1.15);
+  const steel = mat(0x8a949c, { metal: 0.6, rough: 0.4 });
+  const r = Math.min(w, d) * 0.3;
+  // containment dome on a hazard-striped skirt
+  g.add(at(cyl(r, r * 1.1, 1.1, hull, 16), 0, 0.8, 0));
+  g.add(at(sph(r, hull, 16), 0, 1.35, 0));
+  g.add(at(cyl(r * 1.06, r * 1.06, 0.18, mat(0x1a1a1a, { flat: true, rough: 0.9 }), 16), 0, 0.35, 0));
+  g.add(at(stripeBand(r * 1.12, 0.06), 0, 0.35, 0));
+  // twin coolant towers with vent glow
+  for (const sx of [-1, 1] as const) {
+    const cx = sx * (r + 0.34);
+    g.add(at(cyl(0.18, 0.26, 1.0, steel, 12), cx, 0.75, d * 0.3));
+    g.add(at(cyl(0.22, 0.18, 0.16, steel, 12), cx, 1.32, d * 0.3));
+    g.add(at(lamp(0x9fd6e8, 0.09, 0.5), cx, 1.42, d * 0.3));
+  }
+  // radial cooling fins
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    const fin = at(box(0.05, 0.85, r * 0.7, steel), Math.cos(a) * r * 1.12, 0.8, Math.sin(a) * r * 1.12);
     fin.rotation.y = a;
     g.add(fin);
   }
-  const light = at(sph(0.09, mat(color, { emissive: color, emissiveIntensity: 0.9 })), 0, 1.95, 0);
+  const light = at(lamp(color, 0.11), 0, 1.95, 0);
   light.name = 'reactor-light';
   g.add(light);
   return g;
@@ -555,11 +633,22 @@ export function buildNuclearGeneratorMesh(w: number, d: number, color: number): 
 export function buildRelayMesh(w: number, d: number, color: number): THREE.Group {
   const g = new THREE.Group();
   const frame = mat(C.frame);
-  g.add(at(box(w, 0.25, d, frame), 0, 0.125, 0));
-  g.add(at(box(w * 0.6, 0.6, d * 0.6, mat(color, { flat: true, rough: 0.7, metal: 0.4 })), 0, 0.5, 0));
-  g.add(at(cyl(0.05, 0.07, 2.4, frame, 6), 0, 1.9, 0));
-  for (const y of [1.5, 2.1, 2.7]) g.add(at(box(0.9, 0.05, 0.05, frame), 0, y, 0));
-  const tip = at(sph(0.1, mat(color, { emissive: color, emissiveIntensity: 1 })), 0, 3.1, 0);
+  const band = mat(C.frame, { metal: 0.5, rough: 0.5 });
+  g.add(slab(w, d));
+  // transformer cabinet with cooling fins + insulators
+  g.add(at(box(w * 0.62, 0.7, d * 0.62, mat(color, { flat: true, rough: 0.65, metal: 0.45 })), 0, 0.6, 0));
+  for (let i = 0; i < 4; i++) g.add(at(box(w * 0.66, 0.5, 0.03, band), 0, 0.6, -d * 0.28 + i * d * 0.19));
+  for (const sx of [-1, 1] as const) g.add(at(cyl(0.05, 0.06, 0.3, mat(0xcfc2a0, { rough: 0.4 }), 8), sx * w * 0.22, 1.05, d * 0.2));
+  // lattice mast with a dish and a beacon
+  g.add(at(cyl(0.05, 0.07, 2.4, frame, 6), 0, 2.1, 0));
+  for (const y of [1.4, 2.0, 2.6]) {
+    g.add(at(box(0.85, 0.04, 0.04, frame), 0, y, 0));
+    g.add(at(box(0.04, 0.04, 0.85, frame), 0, y, 0));
+  }
+  const dish = at(cyl(0.34, 0.05, 0.16, mat(C.white, { metal: 0.4, rough: 0.5 }), 14), 0.3, 2.3, 0.2);
+  dish.rotation.set(0.7, 0.4, 0);
+  g.add(dish);
+  const tip = at(lamp(color, 0.1), 0, 3.35, 0);
   tip.name = 'beacon';
   g.add(tip);
   return g;
@@ -567,72 +656,177 @@ export function buildRelayMesh(w: number, d: number, color: number): THREE.Group
 
 export function buildRefineryMesh(w: number, d: number, color: number): THREE.Group {
   const g = new THREE.Group();
-  const frame = mat(C.frame);
-  g.add(at(box(w, 0.25, d, frame), 0, 0.125, 0));
-  g.add(at(box(w * 0.75, 0.9, d * 0.7, mat(color, { flat: true, rough: 0.8, metal: 0.3 })), 0, 0.7, 0));
-  // chimney stack
-  g.add(at(cyl(0.22, 0.26, 1.4, mat(0x7a6a56, { flat: true }), 10), w * 0.28, 1.4, -d * 0.2));
-  g.add(at(cyl(0.16, 0.24, 0.4, frame, 10), w * 0.28, 2.2, -d * 0.2));
-  // holding tank
-  g.add(at(cyl(0.3, 0.3, 0.7, mat(0x8a949c, { metal: 0.5 }), 12), -w * 0.28, 0.6, d * 0.22));
-  g.add(at(sph(0.3, mat(0x8a949c, { metal: 0.5 }), 12), -w * 0.28, 0.95, d * 0.22));
-  g.add(at(sph(0.09, mat(color, { emissive: color, emissiveIntensity: 0.7 })), w * 0.3, 1.3, d * 0.28));
+  const band = mat(C.frame, { metal: 0.5, rough: 0.5 });
+  const steel = mat(0x8a949c, { metal: 0.5, rough: 0.4 });
+  g.add(slab(w, d));
+  // main process block with paneling
+  g.add(at(box(w * 0.72, 1.0, d * 0.7, mat(color, { flat: true, rough: 0.75, metal: 0.35 })), -w * 0.05, 0.75, 0));
+  g.add(at(box(w * 0.74, 0.1, d * 0.72, band), -w * 0.05, 1.28, 0));
+  // twin distillation columns rising above the block
+  for (const sx of [0.14, 0.34] as const) {
+    g.add(at(cyl(0.16, 0.18, 1.7, steel, 12), w * sx, 1.4, -d * 0.18));
+    g.add(at(cyl(0.11, 0.16, 0.35, band, 10), w * sx, 2.35, -d * 0.18));
+  }
+  // flare tip on the taller column
+  g.add(at(lamp(C.amber, 0.07, 0.6), w * 0.14, 2.6, -d * 0.18));
+  // spherical holding tank on a cradle + feed pipes
+  g.add(at(sph(0.36, steel, 12), -w * 0.34, 0.9, d * 0.24));
+  g.add(at(cyl(0.36, 0.36, 0.2, band, 12), -w * 0.34, 0.55, d * 0.24));
+  g.add(at(cyl(0.05, 0.05, 0.7, band), -w * 0.1, 0.9, d * 0.24));
+  g.add(at(lamp(color), w * 0.3, 1.35, d * 0.28));
   return g;
 }
 
 /**
- * The Foundry (earned, Phase 16) — a fabrication hall with a gantry crane
- * straddling the roof, distinct from `buildFoundryBase()` (the crashed
- * deployment-platform backdrop rendered at the flight-approach/shipyard
- * scenes, which this does not replace or touch).
+ * The Foundry (earned, Phase 16) — the keystone fabrication hall: a big shed
+ * with a gantry crane straddling the roof, a glowing bay door, roof vents and
+ * an exhaust stack. Distinct from `buildFoundryBase()` (the crashed
+ * deployment-platform backdrop at the shipyard scene), which this doesn't touch.
  */
 export function buildFoundryStructureMesh(w: number, d: number, color: number): THREE.Group {
   const g = new THREE.Group();
   const frame = mat(C.frame);
-  g.add(at(box(w, 0.25, d, frame), 0, 0.125, 0));
-  const hall = mat(color, { flat: true, rough: 0.7, metal: 0.4 });
-  g.add(at(box(w * 0.8, 1.3, d * 0.75, hall), 0, 0.9, 0));
-  // gantry crane straddling the hall roof
   const rail = mat(0x8a949c, { metal: 0.6, rough: 0.4 });
+  g.add(slab(w, d));
+  const hall = mat(color, { flat: true, rough: 0.7, metal: 0.4 });
+  g.add(at(box(w * 0.82, 1.4, d * 0.78, hall), 0, 0.95, 0));
+  // ribbed roof + vents
+  for (let i = -1; i <= 1; i++) g.add(at(box(w * 0.84, 0.08, 0.12, frame), 0, 1.66, i * d * 0.22));
+  for (const sx of [-0.2, 0.2] as const) g.add(at(cyl(0.14, 0.14, 0.24, frame, 8), w * sx, 1.78, d * 0.1));
+  // glowing bay door on the front
+  g.add(at(box(w * 0.4, 0.9, 0.06, mat(C.amber, { emissive: C.amber, emissiveIntensity: 0.4 })), 0, 0.7, d * 0.4));
+  g.add(at(box(w * 0.46, 1.0, 0.05, frame), 0, 0.75, d * 0.41));
+  // exhaust stack
+  g.add(at(cyl(0.18, 0.22, 1.3, rail, 10), -w * 0.34, 1.6, -d * 0.28));
+  g.add(at(cyl(0.13, 0.19, 0.3, frame, 10), -w * 0.34, 2.35, -d * 0.28));
+  // gantry crane straddling the roof
   for (const sz of [-1, 1] as const) {
-    g.add(at(box(w * 0.9, 0.1, 0.1, rail), 0, 1.75, sz * d * 0.34));
-    for (const sx of [-1, 1] as const) {
-      g.add(at(box(0.08, 0.55, 0.08, frame), sx * w * 0.42, 1.45, sz * d * 0.34));
-    }
+    g.add(at(box(w * 0.92, 0.1, 0.1, rail), 0, 1.9, sz * d * 0.35));
+    for (const sx of [-1, 1] as const) g.add(at(box(0.08, 0.6, 0.08, frame), sx * w * 0.43, 1.6, sz * d * 0.35));
   }
-  const trolley = at(box(0.35, 0.2, d * 0.7, rail), -w * 0.1, 1.85, 0);
-  g.add(trolley);
-  g.add(at(cyl(0.03, 0.03, 0.5, frame, 6), -w * 0.1, 1.55, 0));
-  g.add(at(sph(0.09, mat(color, { emissive: color, emissiveIntensity: 0.8 })), w * 0.32, 1.4, d * 0.3));
+  g.add(at(box(0.4, 0.22, d * 0.74, rail), -w * 0.1, 2.0, 0));
+  g.add(at(cyl(0.03, 0.03, 0.6, frame, 6), -w * 0.1, 1.65, 0));
+  g.add(at(lamp(color, 0.1), w * 0.34, 1.5, d * 0.32));
   return g;
 }
 
 /**
- * The Launch Pad (Phase 18) — a circular blast pad with a central gantry
- * tower and hazard-striped blast deflector. Structure only: no launch queue
- * yet (that's Part VII), so this participates in selection/repair/damage
- * exactly like every other structure, with zero special-casing.
+ * The Launch Pad (Phase 18) — a circular blast pad with a service gantry
+ * tower, hazard striping, a flame trench, a propellant tank and floodlights.
+ * Structure only for now: no launch queue yet, so it takes part in
+ * selection/repair/damage like any other structure with no special-casing.
  */
 export function buildLaunchPadMesh(w: number, d: number, color: number): THREE.Group {
   const g = new THREE.Group();
   const frame = mat(C.frame);
-  g.add(at(box(w, 0.25, d, frame), 0, 0.125, 0));
+  const steel = mat(0x8a949c, { metal: 0.6, rough: 0.4 });
+  g.add(slab(w, d));
   const pad = mat(0x4a4640, { flat: true, rough: 0.85, metal: 0.2 });
   const r = Math.min(w, d) * 0.46;
-  g.add(at(cyl(r, r, 0.18, pad, 20), 0, 0.34, 0));
-  const stripe = mat(0xd8b23c, { flat: true, rough: 0.6 });
-  g.add(at(cyl(r * 1.02, r * 1.02, 0.05, stripe, 20), 0, 0.44, 0));
-  // blast deflector trench off to one side
-  g.add(at(box(w * 0.3, 0.35, d * 0.6, mat(0x2a2a2a, { flat: true, rough: 0.9 })), -w * 0.32, 0.17, 0));
-  // central gantry tower with cross-braces climbing to a beacon
-  for (const [sx, sz] of [[-1, -1], [-1, 1], [1, -1], [1, 1]] as const) {
-    g.add(at(cyl(0.08, 0.08, 3.2, frame, 6), sx * r * 0.4, 1.7, sz * r * 0.4));
+  g.add(at(cyl(r, r, 0.2, pad, 24), 0, 0.35, 0));
+  g.add(at(stripeBand(r * 0.98, 0.07), 0, 0.46, 0));
+  // central flame hole + trench
+  g.add(at(cyl(r * 0.22, r * 0.22, 0.22, mat(0x101010, { flat: true, rough: 1 }), 16), 0, 0.36, 0));
+  g.add(at(box(w * 0.22, 0.3, d * 0.5, mat(0x2a2a2a, { flat: true, rough: 0.9 })), -w * 0.34, 0.2, 0));
+  // service gantry tower with platforms + swing arm
+  const tx = r * 0.7;
+  for (const [sx, sz] of [[-1, -1], [-1, 1], [1, -1], [1, 1]] as const) g.add(at(cyl(0.07, 0.07, 3.6, frame, 6), tx + sx * 0.28, 1.9, sz * 0.28));
+  for (const y of [0.8, 1.8, 2.8, 3.5]) {
+    g.add(at(box(0.62, 0.05, 0.62, frame), tx, y, 0));
+    g.add(at(box(0.62, 0.05, 0.05, frame), tx, y, 0.28));
   }
-  for (const y of [0.6, 1.6, 2.6]) {
-    g.add(at(box(r * 0.8, 0.06, 0.06, frame), 0, y, r * 0.4));
-    g.add(at(box(0.06, 0.06, r * 0.8, frame), r * 0.4, y, 0));
+  g.add(at(box(r * 0.7, 0.1, 0.14, steel), tx - r * 0.35, 2.6, 0)); // swing arm reaching over the pad
+  // propellant tank alongside
+  g.add(at(cyl(0.34, 0.34, 1.1, steel, 12), -tx, 0.9, d * 0.28));
+  g.add(at(sph(0.34, steel, 12), -tx, 1.5, d * 0.28));
+  // floodlights + beacon
+  for (const s of [-1, 1] as const) g.add(at(lamp(C.white, 0.07, 0.7), s * r * 0.9, 0.6, s * r * 0.5));
+  g.add(at(lamp(color, 0.1), tx, 3.75, 0));
+  return g;
+}
+
+/** Fabricator — the drone works: an assembly shed with a bay door, a robotic
+ * arm on the roof and an output apron. */
+export function buildFabricatorMesh(w: number, d: number, color: number): THREE.Group {
+  const g = new THREE.Group();
+  const steel = mat(0x8a949c, { metal: 0.6, rough: 0.4 });
+  g.add(slab(w, d));
+  g.add(at(box(w * 0.78, 1.1, d * 0.72, mat(color, { flat: true, rough: 0.7, metal: 0.4 })), 0, 0.8, 0));
+  // sawtooth roof skylights
+  for (let i = -1; i <= 1; i++) {
+    const sky = at(box(w * 0.24, 0.14, d * 0.6, mat(C.accent, { emissive: C.accent, emissiveIntensity: 0.35 })), i * w * 0.26, 1.42, 0);
+    sky.rotation.z = 0.3;
+    g.add(sky);
   }
-  g.add(at(sph(0.1, mat(color, { emissive: color, emissiveIntensity: 0.9 })), 0, 3.35, 0));
+  // roof-mounted robotic arm (segmented)
+  const base = at(cyl(0.16, 0.2, 0.24, steel, 10), -w * 0.1, 1.5, -d * 0.05);
+  g.add(base);
+  const seg1 = at(box(0.12, 0.7, 0.12, steel), -w * 0.1, 1.9, -d * 0.05);
+  seg1.rotation.z = 0.5;
+  g.add(seg1);
+  const seg2 = at(box(0.1, 0.6, 0.1, steel), -w * 0.1 + 0.5, 2.2, -d * 0.05);
+  seg2.rotation.z = -0.7;
+  g.add(seg2);
+  g.add(at(lamp(C.amber, 0.06), -w * 0.1 + 0.85, 2.05, -d * 0.05)); // welding tip
+  // output bay door + apron
+  g.add(at(box(w * 0.34, 0.8, 0.06, mat(0x11181d, { emissive: 0x1a2a30, emissiveIntensity: 0.5 })), 0, 0.65, d * 0.37));
+  g.add(at(box(w * 0.5, 0.04, d * 0.22, mat(0x39454d, { rough: 0.85 })), 0, 0.27, d * 0.5));
+  g.add(at(lamp(color), w * 0.32, 1.25, d * 0.3));
+  return g;
+}
+
+/** Greenhouse — a vaulted glasshouse: translucent barrel roof, planting beds
+ * glowing under grow-lights, an airlock end. */
+export function buildGreenhouseMesh(w: number, d: number, color: number): THREE.Group {
+  const g = new THREE.Group();
+  const frame = mat(C.frame);
+  g.add(slab(w, d));
+  g.add(at(box(w * 0.82, 0.5, d * 0.78, mat(0x3a444c, { flat: true })), 0, 0.4, 0)); // knee wall
+  // translucent barrel-vault roof
+  const glass = mat(0x9fe8c4, { transparent: true, opacity: 0.4, emissive: 0x2f6a4a, emissiveIntensity: 0.3, rough: 0.2, metal: 0.1 });
+  const vault = new THREE.Mesh(new THREE.CylinderGeometry(d * 0.42, d * 0.42, w * 0.82, 16, 1, false, 0, Math.PI), glass);
+  vault.rotation.z = Math.PI / 2;
+  vault.position.set(0, 0.65, 0);
+  g.add(vault);
+  // roof ribs
+  for (let i = -2; i <= 2; i++) {
+    const rib = new THREE.Mesh(new THREE.TorusGeometry(d * 0.42, 0.03, 6, 16, Math.PI), frame);
+    rib.rotation.y = Math.PI / 2;
+    rib.position.set(i * w * 0.18, 0.65, 0);
+    g.add(rib);
+  }
+  // planting beds glowing under grow-lights (seen through the glass)
+  for (const sz of [-0.22, 0.22] as const) {
+    g.add(at(box(w * 0.66, 0.16, d * 0.2, mat(0x2f6a3a, { emissive: 0x3fa85a, emissiveIntensity: 0.5 })), 0, 0.55, d * sz));
+  }
+  // airlock end cap + lamp
+  g.add(at(box(0.1, 0.9, d * 0.5, mat(color, { flat: true, metal: 0.4 })), w * 0.42, 0.7, 0));
+  g.add(at(lamp(color), w * 0.42, 1.15, d * 0.3));
+  return g;
+}
+
+/** Soil Processor — a hopper-and-auger rig that blends fertilizer with regolith. */
+export function buildSoilProcessorMesh(w: number, d: number, color: number): THREE.Group {
+  const g = new THREE.Group();
+  const frame = mat(C.frame);
+  const steel = mat(0x8a949c, { metal: 0.55, rough: 0.4 });
+  g.add(slab(w, d));
+  // inverted-cone hopper on legs
+  g.add(at(cyl(Math.min(w, d) * 0.34, 0.08, 0.9, mat(color, { flat: true, rough: 0.7, metal: 0.35 }), 12), 0, 0.9, 0));
+  g.add(at(cyl(Math.min(w, d) * 0.34, Math.min(w, d) * 0.34, 0.3, steel, 12), 0, 1.45, 0)); // rim
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * Math.PI * 2 + 0.5;
+    const leg = cyl(0.05, 0.05, 1.0, frame);
+    leg.position.set(Math.cos(a) * w * 0.28, 0.5, Math.sin(a) * d * 0.28);
+    leg.rotation.set(Math.sin(a) * 0.25, 0, -Math.cos(a) * 0.25);
+    g.add(leg);
+  }
+  // inclined output auger + motor
+  const auger = at(cyl(0.09, 0.09, 1.3, steel, 10), w * 0.32, 0.7, 0);
+  auger.rotation.z = 0.7;
+  g.add(auger);
+  g.add(at(box(0.24, 0.24, 0.24, mat(C.hullDark, { flat: true })), w * 0.36, 0.3, 0)); // motor
+  g.add(at(lamp(color), -w * 0.2, 1.5, d * 0.2));
   return g;
 }
 

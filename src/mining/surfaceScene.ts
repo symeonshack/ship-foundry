@@ -278,10 +278,10 @@ export class SurfaceScreen implements GameScreen {
     lander.position.set(this.landerPos.x, terrain.heightAt(this.landerPos.x, this.landerPos.z), this.landerPos.z);
     this.site.add(lander);
     this.footColliders.push({
-      minX: this.landerPos.x - 1.5,
-      maxX: this.landerPos.x + 1.5,
-      minZ: this.landerPos.z - 1.5,
-      maxZ: this.landerPos.z + 1.5,
+      minX: this.landerPos.x - 1.7,
+      maxX: this.landerPos.x + 1.7,
+      minZ: this.landerPos.z - 1.7,
+      maxZ: this.landerPos.z + 1.7,
     });
 
     // landmarks — regions worth finding, regenerated deterministically per visit
