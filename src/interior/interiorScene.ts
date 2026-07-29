@@ -124,8 +124,9 @@ export class InteriorScreen implements GameScreen {
     if (h.id === 'starmap') {
       this.ctx.nav('starmap');
     } else if (h.id === 'exit') {
+      // the ship is in orbit — the hatch takes the lander down to the site
       const def = poiDef(this.ctx.store.state.currentPoi);
-      this.ctx.nav(def.special === 'home' ? 'shipyard' : def.special === 'signal' ? 'encounter' : 'surface');
+      this.ctx.nav(def.special === 'signal' ? 'encounter' : 'surface');
     } else {
       this.openGertyPanel();
     }
@@ -200,7 +201,7 @@ export class InteriorScreen implements GameScreen {
     if (nearest) {
       const label =
         nearest.id === 'exit'
-          ? `Exit hatch — ${poiDef(this.ctx.store.state.currentPoi).special === 'home' ? 'Foundry pad' : poiDef(this.ctx.store.state.currentPoi).name}`
+          ? `Take the lander down — ${poiDef(this.ctx.store.state.currentPoi).name}`
           : nearest.id === 'gerty'
             ? 'Talk to GERTY'
             : nearest.label;

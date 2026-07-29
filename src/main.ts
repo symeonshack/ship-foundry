@@ -13,6 +13,7 @@ import { STRUCTURES } from './base/structures';
 import { DRONES, type DroneId } from './base/drones';
 import { autoRefuel } from './mining/hauling';
 import { ShipyardScreen } from './building/shipyard';
+import { LanderScreen } from './lander/landerScene';
 import { StarMapScreen } from './exploration/starMap';
 import { SurfaceScreen } from './mining/surfaceScene';
 import { EncounterScreen } from './encounter/encounterScene';
@@ -41,7 +42,16 @@ const refinery = new Refinery(store);
 const baseSim = new BaseSim(store);
 
 let manager: ScreenManager;
-const nav = (id: ScreenId): void => manager.show(id);
+const nav = (id: ScreenId): void => {
+  // Planetside, the ship interior is out of reach — the hatch you're reaching
+  // for is the lander's. Only launching from the lander (or dev mode) climbs
+  // back up to the orbiting ship and its walk-in interior.
+  if (id === 'interior' && store.state.location === 'ground' && !store.hasFlag(FLAGS.DEV_MODE)) {
+    manager.show('lander');
+    return;
+  }
+  manager.show(id);
+};
 
 const ctx: Ctx = { bus, store, gerty, log, refinery, nav };
 
@@ -65,6 +75,7 @@ const flightScreen = new FlightScreen(ctx);
 const starMapScreen = new StarMapScreen(ctx, canvas);
 starMapScreen.flightRef = flightScreen;
 manager.register(new InteriorScreen(ctx, canvas));
+manager.register(new LanderScreen(ctx, canvas));
 manager.register(new ShipyardScreen(ctx, canvas));
 manager.register(starMapScreen);
 manager.register(new SurfaceScreen(ctx, canvas));
@@ -137,6 +148,12 @@ manager.start();
 {
   const raw = store.state as { base?: GameState['base'] };
   if (!raw.base) raw.base = { structures: [], drones: [], rallyPoint: null };
+}
+
+// saves from before the orbit/ground split default to being aboard the ship
+{
+  const raw = store.state as { location?: GameState['location'] };
+  if (raw.location !== 'orbit' && raw.location !== 'ground') raw.location = 'orbit';
 }
 
 // saves from before the shipyard gate existed had a working Foundry all

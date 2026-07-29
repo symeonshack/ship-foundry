@@ -256,6 +256,7 @@ export class FlightScreen implements GameScreen {
       }
     }
     this.journey = null;
+    store.state.location = 'orbit'; // the ship arrives in orbit at the new POI
     store.bus.emit('travel:arrive', { poiId: store.state.currentPoi });
     checkFuelState(store, this.stats);
     store.changed();

@@ -1036,7 +1036,7 @@ import type { Collider } from '../interior/playerController';
 import { POIS } from '../exploration/starSystem';
 
 export interface InteriorHotspot {
-  id: 'starmap' | 'gerty' | 'exit';
+  id: 'starmap' | 'gerty' | 'exit' | 'launch';
   label: string;
   x: number;
   z: number;
@@ -1211,6 +1211,122 @@ export function buildShipInterior(): ShipInterior {
     { id: 'starmap', label: 'Open star map', x: 0, z: -2.5 },
     { id: 'gerty', label: 'GERTY console', x: hx - 0.4, z: -0.5 },
     { id: 'exit', label: 'Exit hatch', x: 0, z: hz - 0.1 },
+  ];
+
+  return { group: g, colliders, hotspots };
+}
+
+/**
+ * The lander cabin — a cramped descent craft, distinct from the roomy ship.
+ * Two-seat cockpit facing a downward-raked window, a pilot/launch console, a
+ * wall-mounted GERTY console (no robot down here — that presence is aboard the
+ * orbiting ship), and a rear hatch to the surface.
+ */
+export function buildLanderInterior(): ShipInterior {
+  const g = new THREE.Group();
+  const W = 4.4;
+  const H = 2.4;
+  const L = 5.4;
+  const hx = W / 2;
+  const hz = L / 2;
+
+  const wall = mat(0x333f47, { rough: 0.85, metal: 0.35 });
+  const deck = mat(0x262e34, { rough: 0.9, metal: 0.2 });
+  const trim = mat(0x1c242a, { rough: 0.8 });
+  const win = (): THREE.MeshStandardMaterial => mat(0xffb454, { emissive: 0xffb454, emissiveIntensity: 0.7 });
+
+  // shell — the cabin is a canted box: floor, ceiling, walls, split rear
+  g.add(at(box(W, 0.2, L, deck), 0, -0.1, 0));
+  g.add(at(box(W, 0.2, L, trim), 0, H + 0.1, 0));
+  g.add(at(box(0.2, H, L, wall), -hx - 0.1, H / 2, 0));
+  g.add(at(box(0.2, H, L, wall), hx + 0.1, H / 2, 0));
+  // raked front (a low bulkhead below the canopy)
+  g.add(at(box(W, 1.0, 0.2, wall), 0, 0.5, -hz - 0.1));
+  // rear wall split around the hatch
+  const segW = (W - 1.4) / 2;
+  g.add(at(box(segW, H, 0.2, wall), -(0.7 + segW / 2), H / 2, hz + 0.1));
+  g.add(at(box(segW, H, 0.2, wall), 0.7 + segW / 2, H / 2, hz + 0.1));
+  g.add(at(box(1.4, H - 2.1, 0.2, wall), 0, 2.1 + (H - 2.1) / 2, hz + 0.1));
+  // structural hoops
+  for (const z of [-1.6, 0, 1.6]) {
+    const hoop = box(W - 0.1, 0.12, 0.16, trim);
+    g.add(at(hoop, 0, H - 0.06, z));
+    g.add(at(box(0.12, H, 0.16, trim), -hx + 0.06, H / 2, z));
+    g.add(at(box(0.12, H, 0.16, trim), hx - 0.06, H / 2, z));
+  }
+  // one central ceiling strip + overhead grab rail
+  g.add(at(box(0.4, 0.05, L - 1, mat(0xdfeaf2, { emissive: 0xcfe0ec, emissiveIntensity: 0.85 })), 0, H - 0.04, 0));
+  const rail = cyl(0.04, 0.04, L - 1.4, mat(0x8a949c, { metal: 0.6 }));
+  rail.rotation.x = Math.PI / 2;
+  rail.position.set(-hx + 0.5, H - 0.5, 0);
+  g.add(rail);
+
+  // canted cockpit canopy: a raked frame + starfield pane looking down/out
+  const canopyFrame = at(box(3.4, 1.7, 0.14, trim), 0, 1.55, -hz + 0.35);
+  canopyFrame.rotation.x = -0.32;
+  g.add(canopyFrame);
+  const pane = at(box(3.05, 1.4, 0.06, mat(0x060b12, { emissive: 0x0b1624, emissiveIntensity: 0.9 })), 0, 1.55, -hz + 0.42);
+  pane.rotation.x = -0.32;
+  g.add(pane);
+  const paneRand = mulberry32(41);
+  for (let i = 0; i < 14; i++) {
+    g.add(at(sph(0.016, mat(0xffffff, { emissive: 0xdfeaf2, emissiveIntensity: 1.2 }), 6), (paneRand() - 0.5) * 2.8, 1.15 + paneRand() * 1.0, -hz + 0.5 + (paneRand() - 0.5) * 0.2));
+  }
+
+  // pilot console under the canopy (the launch station)
+  g.add(at(box(2.6, 0.6, 0.7, mat(0x39454d, { metal: 0.4 })), 0, 0.7, -hz + 1.05));
+  const consoleTop = at(box(2.4, 0.1, 0.55, mat(0x11181d, { emissive: 0x1a2a30, emissiveIntensity: 0.5 })), 0, 1.02, -hz + 1.0);
+  consoleTop.rotation.x = 0.35;
+  g.add(consoleTop);
+  for (let i = 0; i < 5; i++) g.add(at(box(0.18, 0.02, 0.12, win()), -0.7 + i * 0.35, 1.1, -hz + 0.85));
+  g.add(at(box(0.5, 0.06, 0.3, mat(0x59d6ff, { emissive: 0x59d6ff, emissiveIntensity: 0.5 })), 0.7, 1.12, -hz + 0.95));
+  // twin flight seats
+  for (const sx of [-0.65, 0.65]) {
+    g.add(at(box(0.55, 0.12, 0.55, mat(0x3f4c56)), sx, 0.5, -hz + 1.9));
+    g.add(at(box(0.55, 0.7, 0.12, mat(0x3f4c56)), sx, 0.9, -hz + 2.15));
+    g.add(at(cyl(0.08, 0.1, 0.42, trim), sx, 0.24, -hz + 1.9));
+  }
+
+  // GERTY console on the starboard wall — a screen + lens, no robot down here
+  g.add(at(box(0.14, 1.5, 1.3, trim), hx - 0.08, 1.3, 0.6));
+  const screen = at(box(0.06, 0.66, 0.9, mat(0x0c2a26, { emissive: 0x1f6a5a, emissiveIntensity: 0.6 })), hx - 0.17, 1.45, 0.6);
+  screen.name = 'gerty-screen';
+  g.add(screen);
+  const eye = at(sph(0.075, mat(0xffffff, { emissive: 0x7dffa8, emissiveIntensity: 1.1 }), 10), hx - 0.19, 2.02, 0.6);
+  eye.name = 'gerty-eye';
+  g.add(eye);
+  g.add(at(box(0.4, 0.06, 1.0, trim), hx - 0.32, 0.95, 0.6));
+
+  // rear hatch + caution striping
+  const door = at(box(1.3, 2.05, 0.14, mat(0x39454d, { metal: 0.4 })), 0, 1.03, hz + 0.02);
+  door.name = 'hatch-door';
+  g.add(door);
+  g.add(at(box(1.3, 0.14, 0.16, mat(0xffb454, { emissive: 0xffb454, emissiveIntensity: 0.4 })), 0, 1.75, hz));
+  g.add(at(box(0.26, 0.34, 0.1, mat(0x1c242a, { emissive: 0x59d6ff, emissiveIntensity: 0.35 })), 0.85, 1.2, hz + 0.02));
+  // port-wall stowage: netted crates + a fold-down jump seat
+  g.add(at(box(0.6, 0.9, 1.4, mat(0x6d7a68, { flat: true })), -hx + 0.45, 0.5, 1.4));
+  g.add(at(box(0.5, 0.5, 0.5, mat(0x7a6a56, { flat: true })), -hx + 0.5, 0.28, -0.4));
+  for (let i = 0; i < 4; i++) g.add(at(box(0.02, 1.3, 0.02, trim), -hx + 0.2, 0.9, 0.8 + i * 0.35)); // net lacing
+  // conduit run along the ceiling
+  const cond = cyl(0.05, 0.05, L - 0.8, mat(0x39454d, { metal: 0.5 }));
+  cond.rotation.x = Math.PI / 2;
+  cond.position.set(hx - 0.4, H - 0.3, 0);
+  g.add(cond);
+
+  const colliders: Collider[] = [
+    { minX: -hx, maxX: hx, minZ: -hz - 1, maxZ: -hz + 0.15 }, // front bulkhead
+    { minX: -hx, maxX: hx, minZ: hz - 0.15, maxZ: hz + 1 }, // rear wall
+    { minX: -hx - 1, maxX: -hx + 0.15, minZ: -hz, maxZ: hz }, // port wall
+    { minX: hx - 0.15, maxX: hx + 1, minZ: -hz, maxZ: hz }, // starboard wall
+    { minX: -1.4, maxX: 1.4, minZ: -hz + 0.6, maxZ: -hz + 2.5 }, // console + seats block
+    { minX: hx - 0.55, maxX: hx, minZ: 0.0, maxZ: 1.2 }, // gerty console
+    { minX: -hx, maxX: -hx + 0.8, minZ: 0.7, maxZ: 2.1 }, // port stowage
+  ];
+
+  const hotspots: InteriorHotspot[] = [
+    { id: 'launch', label: 'Launch to orbit', x: 0, z: -hz + 1.9 },
+    { id: 'gerty', label: 'GERTY console', x: hx - 0.5, z: 0.6 },
+    { id: 'exit', label: 'Step outside', x: 0, z: hz - 0.1 },
   ];
 
   return { group: g, colliders, hotspots };

@@ -30,6 +30,7 @@ export function toast(text: string, kind: 'info' | 'warn' | 'bad' | 'good' = 'in
 
 const SCREEN_HINTS: Record<ScreenId, string> = {
   interior: 'SHIP — WASD to move, mouse to look (click the view to capture the cursor; arrows also look), E to interact. The map lives on the table; GERTY roams the deck — walk up to it to talk.',
+  lander: 'LANDER — WASD/mouse, E to interact. You are planetside. GERTY is a console down here (the robot is aboard the ship). The launch station flies you up to orbit; the rear hatch steps back out to the site.',
   flight: 'TRANSIT — A/D steer against drift, W/S throttle. On descent: HOLD SPACE to retro-burn before the ground arrives.',
   shipyard: 'SHIPYARD — pick a part, click a glowing socket to fit it. Click a fitted part to inspect or remove it. Watch the engines: glow means strain.',
   starmap: 'STAR MAP — click a contact to survey it. The outer ring is your point of no return; the inner ring gets you home again.',
@@ -178,10 +179,11 @@ export class Hud {
       for (const [key, b] of this.navButtons)
         b.classList.toggle(
           'active',
-          (key === 'ship' && screen === 'interior') || key === screen || (key === 'site' && (screen === 'surface' || screen === 'encounter')),
+          (key === 'ship' && (screen === 'interior' || screen === 'lander')) || key === screen || (key === 'site' && (screen === 'surface' || screen === 'encounter')),
         );
       this.hint.textContent = SCREEN_HINTS[screen];
-      // aboard, GERTY is a physical console — the comms box is for away operations
+      // aboard the ship, GERTY is the roaming robot — the comms box is for
+      // away/planetside operations (including the lander, where it's a console)
       if (screen === 'interior') this.gertyBox.classList.remove('visible');
       this.refresh();
     });
@@ -235,13 +237,23 @@ export class Hud {
     const atHome = s.currentPoi === 'foundry';
     const inFlight = this.activeScreen === 'flight';
     const foundryBuilt = this.ctx.store.hasFlag(FLAGS.FOUNDRY_BUILT);
-    this.navButtons.get('ship')!.disabled = this.activeScreen === 'interior' || inFlight;
-    this.navButtons.get('shipyard')!.disabled = !atHome || inFlight || !foundryBuilt;
+    const dev = this.ctx.store.hasFlag(FLAGS.DEV_MODE);
+    // planetside, "SHIP" becomes "LANDER" — the interior is out of reach without
+    // launching to orbit (dev mode ignores the split)
+    const planetside = s.location === 'ground' && !dev;
+    const shipBtn = this.navButtons.get('ship')!;
+    shipBtn.textContent = planetside ? 'LANDER' : 'SHIP';
+    shipBtn.disabled = inFlight || this.activeScreen === 'interior' || this.activeScreen === 'lander';
+    shipBtn.title = planetside ? 'Board the lander. Launch from inside to reach the ship in orbit.' : '';
+    // the shipyard is a ship function — reachable from orbit at the Foundry
+    this.navButtons.get('shipyard')!.disabled = !atHome || inFlight || !foundryBuilt || planetside;
     this.navButtons.get('shipyard')!.title = !foundryBuilt
       ? 'No working foundry yet — establish one at the site first.'
-      : atHome
-        ? ''
-        : 'The shipyard is back at the Foundry.';
+      : planetside
+        ? 'Launch to orbit to reach the shipyard.'
+        : atHome
+          ? ''
+          : 'The shipyard is back at the Foundry.';
     // the Foundry is a live buildable/mineable site now, same as any away-site
     this.navButtons.get('site')!.disabled = inFlight;
     this.navButtons.get('site')!.textContent = `SITE: ${def.name.toUpperCase()}`;

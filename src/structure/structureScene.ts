@@ -171,6 +171,7 @@ export class StructureScreen implements GameScreen {
   // ---- lifecycle ----
 
   enter(): void {
+    this.ctx.store.state.location = 'ground'; // a planetside structure — reached via the lander
     this.buildOnce();
     const st = this.ctx.store.state.structure;
 

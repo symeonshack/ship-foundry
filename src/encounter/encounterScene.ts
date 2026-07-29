@@ -122,6 +122,7 @@ export class EncounterScreen implements GameScreen {
   }
 
   enter(): void {
+    this.ctx.store.state.location = 'ground'; // a planetside site — reached via the lander
     this.buildScene();
     const enc = this.ctx.store.state.encounter;
     if (!enc.started) {

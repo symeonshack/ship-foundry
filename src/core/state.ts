@@ -109,6 +109,9 @@ export interface GameState {
   cargo: Partial<Record<RawResourceId, number>>;
   ship: PartPlacement[];
   currentPoi: string;
+  /** whether the player is aboard the ship in orbit or planetside (lander/surface).
+   * Gates ship-interior access: you must launch from the lander to reach it. */
+  location: 'orbit' | 'ground';
   pois: Record<string, PoiState>;
   refinery: { tier: 1 | 2; queue: RefineJob[] };
   flags: Record<string, FlagValue>;
@@ -150,6 +153,7 @@ export function createNewGame(): GameState {
       { uid: 'p8', partId: 'habitatRing', parent: 'p1', socket: 0 },
     ],
     currentPoi: 'foundry',
+    location: 'orbit', // you wake aboard the ship; descend via the lander to work a site
     pois: {},
     refinery: { tier: 1, queue: [] },
     // FLAGS.FOUNDRY_BUILT starts unset: the shipyard is locked until a

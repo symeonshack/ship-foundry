@@ -8,9 +8,20 @@ You wake aboard. **WASD** to move, mouse to look (click the view to capture the 
 
 - The star map lives on the holo table.
 - **GERTY is a mobile robot** that ambles around the deck on its own. Walk up to it and press **E** to talk — it stops, turns to face you, and tracks you while you're near or while it's speaking, then goes back to roaming once you leave. Its dock/charging berth is the lit alcove on the starboard wall.
-- The rear hatch leads outside.
+- The rear hatch **takes the lander down** to whatever site you're orbiting.
 
-Travel always ends back aboard the ship.
+The ship stays in orbit; you work a site from the **lander** (below). Interstellar travel always ends back aboard the ship, in orbit at the new destination.
+
+## Planetside — the lander
+
+Down on a site (the Landing Zone or any surface), the ship is up in orbit — so "boarding the ship" from the surface actually puts you inside your **lander**, a cramped descent cabin. On the surface the top-nav **SHIP** button reads **LANDER**, and pressing **E** at your lander on foot (or "Board lander" in command view) drops you inside it.
+
+The lander cabin holds three things:
+- A **GERTY console** on the wall — press **E** to talk. GERTY's *voice* reaches the lander (and shows in the comms box), but its robot body stays aboard the ship; only in orbit do you meet the robot itself.
+- The **launch station** at the cockpit — **E** flies the lander up to dock with the ship, which is the only way (short of dev mode) to reach the walk-in ship interior from a surface.
+- The **rear hatch** — steps back out to the site.
+
+Because the ship is in orbit, the **SHIPYARD** is also out of reach while planetside — launch up first. Dev mode ignores the whole split and lets you jump straight to the ship.
 
 ## Shipyard (at the Foundry)
 

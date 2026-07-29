@@ -173,6 +173,7 @@ export class SurfaceScreen implements GameScreen {
   }
 
   enter(): void {
+    this.ctx.store.state.location = 'ground'; // on a surface = planetside
     this.def = poiDef(this.ctx.store.state.currentPoi);
     this.stats = deriveStats(this.ctx.store.state.ship);
     this.excursion = 0;
@@ -571,7 +572,7 @@ export class SurfaceScreen implements GameScreen {
 
   private interactFoot(target: FootTarget): void {
     if (target.kind === 'lander') {
-      this.ctx.nav('interior');
+      this.ctx.nav('lander'); // board your grounded lander, not the orbiting ship
       return;
     }
     if (target.kind === 'hatch') {
@@ -818,7 +819,7 @@ export class SurfaceScreen implements GameScreen {
     if (this.footTarget) {
       const label =
         this.footTarget.kind === 'lander'
-          ? 'Board ship'
+          ? 'Board lander'
           : this.footTarget.kind === 'hatch'
             ? 'Enter the structure'
             : this.footTarget.action === 'recall'
@@ -1025,7 +1026,7 @@ export class SurfaceScreen implements GameScreen {
     } else {
       site.appendChild(button('Center on lander  [H]', () => this.centerOnLander()));
     }
-    site.appendChild(button('Board ship', () => this.ctx.nav('interior')));
+    site.appendChild(button('Board lander', () => this.ctx.nav('lander')));
 
     // color legend: deposits are color-coded on the ground and the minimap,
     // so spell out which color is which resource without needing to hover
