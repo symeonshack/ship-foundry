@@ -190,6 +190,9 @@ export const BALANCE = {
       gatherRate: 0.6,
       /** worker drones: units held before heading home, even if the deposit has more */
       carryCapacity: 4,
+      /** hauler drones: units carried per delivery run — bigger, so one hauler
+       * batches several worker-loads per trip to base */
+      haulerCarry: 8,
     },
   },
 

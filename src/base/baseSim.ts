@@ -12,7 +12,7 @@ import { FLAGS } from '../core/flags';
 import type { GameStore } from '../core/state';
 import { STRUCTURES, canRepair, repairCost, tickConstruction, tickRepair, type StructureInstance } from './structures';
 import { isGeneratorRunning, tickNuclear, tickSolar } from './power';
-import { tickDroneTask, tickFabricator } from './drones';
+import { manageHaulers, tickDroneTask, tickFabricator } from './drones';
 import { footprintAt } from './placement';
 
 /** notify (and re-render) at most this often for continuous numeric drift —
@@ -102,6 +102,8 @@ export class BaseSim {
     // state rather than shared with BaseView, since this sim must keep running
     // with no view attached.
     const droneColliders = this.store.state.base.structures.map((s) => footprintAt(STRUCTURES[s.defId], s.x, s.z));
+    // hauler↔worker bookkeeping + idle-hauler assignment happens once, up front
+    manageHaulers(this.store);
     for (const d of this.store.state.base.drones) {
       const before = d.status;
       tickDroneTask(this.store, d, dt, droneColliders);

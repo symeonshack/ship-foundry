@@ -804,7 +804,8 @@ export class BaseView {
           this.panelUpdaters.push(() => {
             const carried = Math.floor(drone.carrying ?? 0);
             status.textContent =
-              drone.status === 'gathering' ? `gathering · carrying ${carried}`
+              drone.defId === 'hauler' && drone.haulTarget ? `hauling · carrying ${carried}`
+              : drone.status === 'gathering' ? (drone.hauledBy ? `gathering · hauled` : `gathering · carrying ${carried}`)
               : drone.status === 'returning' ? `returning · carrying ${carried}`
               : drone.status === 'moving' ? (drone.nodeId ? 'moving to deposit' : 'moving')
               : 'idle';

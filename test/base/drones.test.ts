@@ -3,6 +3,7 @@ import { EventBus } from '../../src/core/events';
 import { createNewGame, GameStore } from '../../src/core/state';
 import {
   DRONES,
+  manageHaulers,
   orderGather,
   orderMove,
   queueDrone,
@@ -254,5 +255,67 @@ describe('tickDroneTask (Worker Drone gather loop)', () => {
     tickDroneTask(store, d, 1, []);
     expect(store.state.stock.ore).toBe(4);
     expect(d.carrying).toBe(0);
+  });
+});
+
+describe('Hauler automation (Phase 23)', () => {
+  const setup = (remaining: number) => {
+    const store = new GameStore(new EventBus(), createNewGame());
+    store.poi('foundry').nodes = [{ id: 'n1', resource: 'ore', remaining, x: 5, z: 0, collapseIn: null }];
+    // a worker already parked and gathering at the node
+    const worker: DroneInstance = { uid: 'w1', defId: 'worker', x: 5, z: 0, status: 'gathering', target: null, nodeId: 'n1', carrying: 0 };
+    // an idle hauler waiting at the base drop (origin, since no structures)
+    const hauler: DroneInstance = { uid: 'h1', defId: 'hauler', x: 0, z: 0, status: 'idle', target: null };
+    store.state.base.drones.push(worker, hauler);
+    return { store, worker, hauler };
+  };
+  const tickBase = (store: GameStore, dt: number, steps: number) => {
+    for (let i = 0; i < steps; i++) {
+      manageHaulers(store);
+      for (const d of store.state.base.drones) tickDroneTask(store, d, dt, []);
+    }
+  };
+
+  it('assigns an idle hauler to the nearest un-serviced gathering worker', () => {
+    const { store, worker, hauler } = setup(20);
+    manageHaulers(store);
+    expect(hauler.haulTarget).toBe('w1');
+    expect(worker.hauledBy).toBe('h1');
+    expect(hauler.status).toBe('moving');
+  });
+
+  it('ferries the worker output to base — the worker keeps mining, never self-returns', () => {
+    const { store, worker } = setup(30);
+    let everReturned = false;
+    for (let i = 0; i < 80; i++) {
+      manageHaulers(store);
+      for (const d of store.state.base.drones) tickDroneTask(store, d, 0.5, []);
+      if (worker.status === 'returning') everReturned = true;
+    }
+    expect(everReturned).toBe(false); // a hauled worker never walks its own haul home
+    expect(store.state.stock.ore).toBeGreaterThan(4); // the hauler delivered multiple loads
+    expect(store.poi('foundry').nodes![0]!.remaining).toBeLessThan(30);
+  });
+
+  it('releases the hauler and goes idle once the deposit is spent and drained', () => {
+    const { store, worker, hauler } = setup(5);
+    tickBase(store, 0.5, 120);
+    expect(store.poi('foundry').nodes![0]!.remaining).toBe(0);
+    expect(store.state.stock.ore).toBe(5); // every unit banked, nothing lost
+    expect(worker.status).toBe('idle');
+    expect(hauler.haulTarget).toBeUndefined();
+    expect(hauler.status).toBe('idle');
+  });
+
+  it('detaches cleanly when the hauler is given a manual move order', () => {
+    const { store, worker, hauler } = setup(20);
+    manageHaulers(store);
+    expect(worker.hauledBy).toBe('h1');
+    orderMove(hauler, 20, 20);
+    expect(hauler.haulTarget).toBeUndefined();
+    manageHaulers(store); // worker's back-ref heals now that the hauler let go
+    expect(worker.hauledBy).toBeUndefined();
+    expect(hauler.status).toBe('moving');
+    expect(hauler.target).toEqual({ x: 20, z: 20 });
   });
 });
