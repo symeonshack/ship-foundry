@@ -3,7 +3,7 @@ import type { GameScreen } from '../scene/renderer';
 import type { Ctx } from '../core/ctx';
 import { makeCamera } from '../scene/camera';
 import { addBasicLights, addStars, buildFoundryBase, buildPoiMarker, buildTerrain, mat, type Terrain } from '../scene/primitives';
-import { buildShipAssembly, setEngineFlare, type ShipAssembly } from '../building/shipMesh';
+import { buildShipAssembly, setEngineFlare, spinCentrifuges, type ShipAssembly } from '../building/shipMesh';
 import { deriveStats, type ShipStats } from '../building/shipStats';
 import { poiDef, type PoiDef } from '../exploration/starSystem';
 import { checkFuelState } from '../companion/hints';
@@ -273,6 +273,7 @@ export class FlightScreen implements GameScreen {
 
   update(dt: number): void {
     this.t += dt;
+    if (this.assembly) spinCentrifuges(this.assembly.group, dt);
     const j = this.journey;
     if (!j) return;
 

@@ -5,7 +5,7 @@ import { makeCamera, makeOrbit } from '../scene/camera';
 import { addBasicLights, addStars, buildFoundryBase, buildPartMesh, buildSocketMarker, mat } from '../scene/primitives';
 import { PARTS, SHIP_PART_IDS, type PartId } from './partCatalog';
 import { deriveStats, type ShipStats } from './shipStats';
-import { applyStrainGlow, buildShipAssembly, type ShipAssembly } from './shipMesh';
+import { applyStrainGlow, buildShipAssembly, spinCentrifuges, type ShipAssembly } from './shipMesh';
 import { costToString } from '../core/resources';
 import { FLAGS } from '../core/flags';
 import { box, button, clearPanel, el, renderRefineryPanel, type LivePanel } from '../ui/panels';
@@ -365,6 +365,7 @@ export class ShipyardScreen implements GameScreen {
   update(dt: number): void {
     this.t += dt;
     this.controls.update();
+    spinCentrifuges(this.shipGroup, dt);
     for (const p of this.livePanels) p.update();
 
     // stability wobble — off-axis mass makes the whole stack sway

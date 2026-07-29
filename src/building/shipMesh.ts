@@ -68,6 +68,13 @@ export function applyStrainGlow(group: THREE.Object3D, stats: ShipStats): void {
   });
 }
 
+/** turn any Habitat Ring centrifuge assemblies in the ship — gentle, constant */
+export function spinCentrifuges(group: THREE.Object3D, dt: number): void {
+  group.traverse((o) => {
+    if (o.name === 'centrifuge') o.rotation.y += dt * 0.6;
+  });
+}
+
 /** throttle flare on top of the strain base glow (flight scene) */
 export function setEngineFlare(group: THREE.Object3D, flare: number): void {
   group.traverse((o) => {

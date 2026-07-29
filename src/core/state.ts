@@ -139,11 +139,15 @@ export function createNewGame(): GameState {
     cargo: {},
     ship: [
       { uid: 'p1', partId: 'hullS', parent: null, socket: -1 },
+      // twin thrusters on the two mount hardpoints — enough to carry the ring
       { uid: 'p2', partId: 'engine1', parent: 'p1', socket: 1 },
-      { uid: 'p3', partId: 'tank', parent: 'p1', socket: 3 },
-      { uid: 'p4', partId: 'lifeSupport', parent: 'p1', socket: 4 },
-      { uid: 'p5', partId: 'sensor1', parent: 'p1', socket: 5 },
-      { uid: 'p6', partId: 'drillRig', parent: 'p1', socket: 6 },
+      { uid: 'p3', partId: 'engine1', parent: 'p1', socket: 2 },
+      { uid: 'p4', partId: 'tank', parent: 'p1', socket: 3 },
+      { uid: 'p5', partId: 'lifeSupport', parent: 'p1', socket: 4 },
+      { uid: 'p6', partId: 'sensor1', parent: 'p1', socket: 5 },
+      { uid: 'p7', partId: 'drillRig', parent: 'p1', socket: 6 },
+      // the habitat centrifuge ring, seated on the hull's top structural hardpoint
+      { uid: 'p8', partId: 'habitatRing', parent: 'p1', socket: 0 },
     ],
     currentPoi: 'foundry',
     pois: {},

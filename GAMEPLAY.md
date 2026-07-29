@@ -16,6 +16,8 @@ Travel always ends back aboard the ship.
 
 Pick a part, click a glowing socket to fit it. Click a fitted part to inspect, remove, or refund it. Engines glow under strain; off-axis loads make the whole stack wobble.
 
+You start with a bigger, more built-up airframe than a bare frame — twin thrusters and a **Habitat Ring** already fitted. The habitat ring is a spun centrifuge (you can watch it turn) that adds crew/stowage space and a little radiation shielding, but it's heavy, so it wants the thrust to match — a live example of the mass-vs-thrust tradeoff the strain lamp reads out. Like any part it's built from the palette and can be unbolted; it seats on the hull's top structural hardpoint.
+
 The shipyard is gated behind having a built Foundry structure at the Landing Zone site — the nav button is disabled with a tooltip until then.
 
 ## Star map (via the ship's console)

@@ -3,6 +3,7 @@ import type { ResourceCost } from '../core/resources';
 export type PartId =
   | 'hullS'
   | 'hullL'
+  | 'habitatRing'
   | 'engine1'
   | 'engine2'
   | 'tank'
@@ -100,6 +101,22 @@ export const PARTS: Record<PartId, PartDef> = {
       { type: 'utility', pos: [0, 1.8, -1.3], rot: [-HP, 0, 0] },
     ],
     stats: { cargoCap: 8 },
+  },
+  habitatRing: {
+    id: 'habitatRing',
+    name: 'Habitat Ring',
+    desc: 'A spun centrifuge ring — living and stowage space under gentle artificial gravity. Heavy, and a real presence on the airframe.',
+    place: 'ship',
+    mass: 12,
+    cost: { alloy: 10, ceramic: 6 },
+    attachesTo: 'structural',
+    comHeight: 0.6,
+    sockets: [
+      { type: 'structural', pos: [0, 1.6, 0], rot: [0, 0, 0] },
+      { type: 'utility', pos: [0.85, 0.7, 0], rot: [0, 0, -HP] },
+      { type: 'utility', pos: [-0.85, 0.7, 0], rot: [0, 0, HP] },
+    ],
+    stats: { cargoCap: 10, radRating: 1 },
   },
   engine1: {
     id: 'engine1',

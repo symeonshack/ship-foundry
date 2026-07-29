@@ -8,14 +8,16 @@ const root: PartPlacement = { uid: 'p1', partId: 'hullS', parent: null, socket: 
 describe('deriveStats', () => {
   it('sums the starting ship correctly', () => {
     const stats = deriveStats(createNewGame().ship);
-    expect(stats.mass).toBe(10 + 4 + 3 + 3 + 1 + 5);
-    expect(stats.thrust).toBe(20);
+    // hullS + 2×engine1 + tank + lifeSupport + sensor1 + drillRig + habitatRing
+    expect(stats.mass).toBe(10 + 4 + 4 + 3 + 3 + 1 + 5 + 12);
+    expect(stats.thrust).toBe(40); // twin thrusters
     expect(stats.fuelCap).toBe(30);
-    expect(stats.cargoCap).toBe(6); // hull integrated hold
+    expect(stats.cargoCap).toBe(6 + 10); // hull integrated hold + habitat ring stowage
     expect(stats.sensorTier).toBe(1);
+    expect(stats.radRating).toBe(1); // shielded habitat ring
     expect(stats.hasLifeSupport).toBe(true);
     expect(stats.rigCounts.drill).toBe(1);
-    expect(stats.strain).toBe('ok');
+    expect(stats.strain).toBe('ok'); // 42 mass / 40 thrust = 1.05
   });
 
   it('reports infinite fuel cost with no engine', () => {

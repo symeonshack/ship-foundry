@@ -72,14 +72,29 @@ export function buildPartMesh(id: PartId): THREE.Group {
   const haloMaterial = mat(C.accent, { emissive: C.accent, emissiveIntensity: 0.45, metal: 0.6, rough: 0.35 });
   const dark = mat(C.hullDark);
   const frame = mat(C.frame);
+  const band = mat(C.frame, { metal: 0.5, rough: 0.5 });
+  const torus = (r: number, tube: number, m: THREE.Material, rad = 8, tub = 24) =>
+    new THREE.Mesh(new THREE.TorusGeometry(r, tube, rad, tub), m);
+  const windowLight = (): THREE.MeshStandardMaterial => mat(C.amber, { emissive: C.amber, emissiveIntensity: 0.75 });
 
   switch (id) {
     case 'hullS': {
-      g.add(at(cyl(0.95, 1.05, 2.4, hull, 8), 0, 1.2, 0));
-      g.add(at(cyl(1.08, 1.08, 0.18, frame, 8), 0, 0.35, 0));
-      g.add(at(cyl(1.08, 1.08, 0.18, frame, 8), 0, 2.05, 0));
-      g.add(at(box(0.5, 0.3, 0.25, dark), 0, 1.2, 0.95));
-      const ring = new THREE.Mesh(new THREE.TorusGeometry(1.15, 0.05, 8, 36), haloMaterial);
+      // segmented pressure hull with ribs, frame bands, a cockpit canopy and lit ports
+      g.add(at(cyl(0.98, 1.08, 2.4, hull, 12), 0, 1.2, 0));
+      for (const y of [0.35, 1.2, 2.05]) g.add(at(cyl(1.12, 1.12, 0.16, band, 12), 0, y, 0));
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * Math.PI * 2;
+        const rib = at(box(0.08, 2.2, 0.12, band), Math.cos(a) * 1.04, 1.2, Math.sin(a) * 1.04);
+        rib.rotation.y = -a;
+        g.add(rib);
+      }
+      g.add(at(box(0.6, 0.42, 0.34, dark), 0, 1.95, 0.92)); // cockpit shell (+z)
+      g.add(at(box(0.44, 0.24, 0.1, mat(C.accent, { emissive: C.accent, emissiveIntensity: 0.5 })), 0, 2.0, 1.12));
+      g.add(at(box(0.5, 0.5, 0.18, dark), 0, 1.0, -1.0)); // rear access hatch
+      for (let i = 0; i < 3; i++) g.add(at(box(0.13, 0.13, 0.05, windowLight()), -0.3 + i * 0.3, 0.8, 1.02));
+      g.add(at(sph(0.055, mat(C.green, { emissive: C.green, emissiveIntensity: 0.9 })), 0.95, 2.1, 0.35));
+      g.add(at(sph(0.055, mat(C.red, { emissive: C.red, emissiveIntensity: 0.9 })), -0.95, 2.1, 0.35));
+      const ring = torus(1.15, 0.05, haloMaterial, 8, 40);
       ring.rotation.x = Math.PI / 2;
       ring.position.set(0, 1.2, 0);
       ring.name = 'hull-ring';
@@ -87,52 +102,106 @@ export function buildPartMesh(id: PartId): THREE.Group {
       break;
     }
     case 'hullL': {
-      g.add(at(cyl(1.2, 1.3, 3.6, hull, 8), 0, 1.8, 0));
-      g.add(at(cyl(1.34, 1.34, 0.2, frame, 8), 0, 0.5, 0));
-      g.add(at(cyl(1.34, 1.34, 0.2, frame, 8), 0, 1.8, 0));
-      g.add(at(cyl(1.34, 1.34, 0.2, frame, 8), 0, 3.1, 0));
-      g.add(at(box(0.6, 0.9, 0.2, dark), 0, 1.8, 1.22));
-      const ring = new THREE.Mesh(new THREE.TorusGeometry(1.4, 0.06, 8, 40), haloMaterial);
+      // extended spine: more bands, a raised bridge, antenna mast and window rows
+      g.add(at(cyl(1.18, 1.32, 3.6, hull, 14), 0, 1.8, 0));
+      for (const y of [0.5, 1.5, 2.5, 3.4]) g.add(at(cyl(1.38, 1.38, 0.18, band, 14), 0, y, 0));
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        const rib = at(box(0.09, 3.3, 0.14, band), Math.cos(a) * 1.28, 1.8, Math.sin(a) * 1.28);
+        rib.rotation.y = -a;
+        g.add(rib);
+      }
+      g.add(at(box(0.8, 0.7, 0.45, dark), 0, 3.05, 1.2)); // bridge (+z)
+      g.add(at(box(0.58, 0.3, 0.12, mat(C.accent, { emissive: C.accent, emissiveIntensity: 0.5 })), 0, 3.12, 1.42));
+      g.add(at(cyl(0.035, 0.035, 0.9, band), 0, 3.9, -0.5)); // dorsal antenna
+      g.add(at(sph(0.07, mat(C.accent, { emissive: C.accent, emissiveIntensity: 0.9 })), 0, 4.4, -0.5));
+      for (const row of [1.0, 2.2]) for (let i = 0; i < 5; i++) g.add(at(box(0.15, 0.15, 0.05, windowLight()), -0.6 + i * 0.3, row, 1.28));
+      const ring = torus(1.42, 0.06, haloMaterial, 8, 44);
       ring.rotation.x = Math.PI / 2;
       ring.position.set(0, 1.8, 0);
       ring.name = 'hull-ring';
       g.add(ring);
       break;
     }
+    case 'habitatRing': {
+      // a spun centrifuge ring on a static hub — the whole ring assembly (named
+      // 'centrifuge') turns; spinCentrifuges() drives it in the shipyard/flight.
+      const trim = mat(C.accent, { emissive: C.accent, emissiveIntensity: 0.4, metal: 0.6, rough: 0.35 });
+      g.add(at(cyl(0.5, 0.58, 1.6, hull, 14), 0, 0.8, 0)); // central hub
+      g.add(at(cyl(0.64, 0.64, 0.14, band, 14), 0, 0.25, 0));
+      g.add(at(cyl(0.64, 0.64, 0.14, band, 14), 0, 1.4, 0));
+      g.add(at(sph(0.12, mat(C.accent, { emissive: C.accent, emissiveIntensity: 0.7 })), 0, 1.66, 0)); // hub beacon
+      const spin = new THREE.Group();
+      spin.name = 'centrifuge';
+      spin.position.y = 0.6;
+      const R = 2.9;
+      const outer = torus(R, 0.36, hull, 14, 64); // the habitat torus itself
+      outer.rotation.x = Math.PI / 2;
+      spin.add(outer);
+      for (const yo of [0.34, -0.34]) {
+        const rail = torus(R, 0.08, trim, 8, 64);
+        rail.rotation.x = Math.PI / 2;
+        rail.position.y = yo;
+        spin.add(rail);
+      }
+      // eight spoke arms trussed out to the rim
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        const spoke = at(box(R - 0.5, 0.14, 0.14, band), Math.cos(a) * (R / 2 + 0.1), 0, Math.sin(a) * (R / 2 + 0.1));
+        spoke.rotation.y = -a;
+        spin.add(spoke);
+      }
+      // six habitat modules riding the rim, each with a lit face
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * Math.PI * 2 + Math.PI / 8;
+        const pod = at(box(0.8, 0.62, 1.15, mat(C.hullDark, { flat: true })), Math.cos(a) * R, 0, Math.sin(a) * R);
+        pod.rotation.y = -a;
+        spin.add(pod);
+        spin.add(at(box(0.5, 0.34, 0.06, windowLight()), Math.cos(a) * (R + 0.42), 0.02, Math.sin(a) * (R + 0.42)));
+      }
+      // running lights strung between the modules
+      for (let i = 0; i < 36; i++) {
+        const a = (i / 36) * Math.PI * 2;
+        spin.add(at(sph(0.05, mat(C.accent, { emissive: C.accent, emissiveIntensity: 0.85 })), Math.cos(a) * (R + 0.36), 0.34, Math.sin(a) * (R + 0.36)));
+      }
+      g.add(spin);
+      break;
+    }
     case 'engine1': {
-      g.add(at(box(0.5, 0.12, 0.5, frame), 0, 0.06, 0));
-      g.add(at(cyl(0.3, 0.34, 0.55, dark), 0, 0.42, 0));
-      const nozzle = at(cyl(0.48, 0.26, 0.5, mat(C.frame, { metal: 0.6, rough: 0.4 }), 14), 0, 0.95, 0);
-      g.add(nozzle);
+      g.add(at(box(0.55, 0.13, 0.55, frame), 0, 0.065, 0));
+      g.add(at(cyl(0.32, 0.38, 0.6, dark), 0, 0.44, 0));
+      g.add(at(cyl(0.52, 0.28, 0.55, mat(C.frame, { metal: 0.6, rough: 0.4 }), 16), 0, 1.0, 0));
       const glow = at(
         new THREE.Mesh(
-          new THREE.CylinderGeometry(0.4, 0.2, 0.42, 14),
+          new THREE.CylinderGeometry(0.42, 0.2, 0.44, 16),
           mat(0x201510, { emissive: C.amber, emissiveIntensity: 0.0 }),
         ),
         0,
-        0.96,
+        1.01,
         0,
       );
       glow.name = 'glow';
       g.add(glow);
+      g.add(at(cyl(0.05, 0.05, 0.5, dark), 0.3, 0.5, 0)); // feed line
       break;
     }
     case 'engine2': {
-      g.add(at(box(0.7, 0.14, 0.7, frame), 0, 0.07, 0));
-      g.add(at(cyl(0.42, 0.46, 0.7, dark), 0, 0.55, 0));
-      g.add(at(cyl(0.62, 0.34, 0.6, mat(C.frame, { metal: 0.6, rough: 0.4 }), 16), 0, 1.2, 0));
+      g.add(at(box(0.78, 0.15, 0.78, frame), 0, 0.075, 0));
+      g.add(at(cyl(0.46, 0.5, 0.72, dark), 0, 0.56, 0));
+      g.add(at(cyl(0.68, 0.36, 0.62, mat(C.frame, { metal: 0.6, rough: 0.4 }), 18), 0, 1.24, 0));
       const glow = at(
         new THREE.Mesh(
-          new THREE.CylinderGeometry(0.52, 0.26, 0.5, 16),
+          new THREE.CylinderGeometry(0.56, 0.28, 0.5, 18),
           mat(0x201510, { emissive: C.amber, emissiveIntensity: 0.0 }),
         ),
         0,
-        1.22,
+        1.26,
         0,
       );
       glow.name = 'glow';
       g.add(glow);
-      g.add(at(cyl(0.1, 0.1, 0.9, mat(C.violet, { emissive: C.violet, emissiveIntensity: 0.4 })), 0.4, 0.5, 0.4));
+      g.add(at(cyl(0.1, 0.1, 0.95, mat(C.violet, { emissive: C.violet, emissiveIntensity: 0.4 })), 0.44, 0.55, 0.44));
+      g.add(at(cyl(0.1, 0.1, 0.95, mat(C.violet, { emissive: C.violet, emissiveIntensity: 0.4 })), -0.44, 0.55, -0.44));
       break;
     }
     case 'tank': {
