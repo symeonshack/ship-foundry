@@ -7,7 +7,7 @@ Everything you need to actually play: controls, what each screen does, and the d
 You wake aboard. **WASD** to move, mouse to look (click the view to capture the cursor; arrow keys also look), **E** to interact.
 
 - The star map lives on the holo table.
-- GERTY lives on the wall console.
+- **GERTY is a mobile robot** that ambles around the deck on its own. Walk up to it and press **E** to talk — it stops, turns to face you, and tracks you while you're near or while it's speaking, then goes back to roaming once you leave. Its dock/charging berth is the lit alcove on the starboard wall.
 - The rear hatch leads outside.
 
 Travel always ends back aboard the ship.

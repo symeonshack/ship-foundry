@@ -1125,15 +1125,23 @@ export function buildShipInterior(): ShipInterior {
   }
   g.add(holo);
 
-  // GERTY console on the starboard wall: frame, screen, lens
-  g.add(at(box(0.15, 1.7, 1.6, trim), hx - 0.08, 1.5, -0.5));
-  const screen = at(box(0.07, 0.75, 1.05, mat(0x0c2a26, { emissive: 0x1f6a5a, emissiveIntensity: 0.6 })), hx - 0.18, 1.7, -0.5);
-  screen.name = 'gerty-screen';
-  g.add(screen);
-  const eye = at(sph(0.08, mat(0xffffff, { emissive: 0x7dffa8, emissiveIntensity: 1.1 }), 10), hx - 0.2, 2.42, -0.5);
-  eye.name = 'gerty-eye';
-  g.add(eye);
-  g.add(at(box(0.45, 0.07, 1.3, trim), hx - 0.35, 1.0, -0.5));
+  // GERTY's charging dock on the starboard wall — a lit alcove + floor pad.
+  // GERTY itself is now a mobile robot (buildGertyBot) that roams the deck and
+  // returns to roughly here; the dock is scenery, not the thing you talk to.
+  g.add(at(box(0.15, 2.0, 1.8, trim), hx - 0.08, 1.2, -0.5));
+  const dockScreen = at(box(0.06, 0.5, 1.2, mat(0x0c2a26, { emissive: 0x1f6a5a, emissiveIntensity: 0.4 })), hx - 0.17, 1.85, -0.5);
+  dockScreen.name = 'dock-screen';
+  g.add(dockScreen);
+  for (let i = 0; i < 4; i++) {
+    const on = i % 2 === 0;
+    g.add(at(box(0.05, 0.09, 0.09, mat(on ? 0xffb454 : 0x7dffa8, { emissive: on ? 0xffb454 : 0x7dffa8, emissiveIntensity: 0.9 })), hx - 0.16, 1.35, -1.0 + i * 0.32));
+  }
+  // recessed floor pad with an underglow ring — GERTY's berth
+  g.add(at(cyl(0.55, 0.55, 0.04, trim, 20), hx - 0.95, 0.02, -0.5));
+  const dockGlow = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.03, 8, 28), mat(0x59d6ff, { emissive: 0x59d6ff, emissiveIntensity: 0.6 }));
+  dockGlow.rotation.x = Math.PI / 2;
+  dockGlow.position.set(hx - 0.95, 0.05, -0.5);
+  g.add(dockGlow);
 
   // rear hatch
   const door = at(box(1.4, 2.35, 0.15, mat(0x39454d, { metal: 0.4 })), 0, 1.18, hz + 0.02);
@@ -1142,13 +1150,48 @@ export function buildShipInterior(): ShipInterior {
   g.add(at(box(1.4, 0.16, 0.16, mat(0xffb454, { emissive: 0xffb454, emissiveIntensity: 0.4 })), 0, 1.95, hz));
   g.add(at(box(0.28, 0.38, 0.1, mat(0x1c242a, { emissive: 0x59d6ff, emissiveIntensity: 0.35 })), 0.95, 1.35, hz + 0.02));
 
-  // bunk + crates for density
+  // ---- furnishings: a lived-in deck ----
+  // bunk against the port-aft wall
   g.add(at(box(1.1, 0.45, 2.0, mat(0x3f4c56)), -3.35, 0.3, 3.4));
-  g.add(at(box(0.5, 0.14, 0.7, mat(0x8a949c)), -3.35, 0.6, 2.7));
-  g.add(at(box(0.75, 0.75, 0.75, mat(0x6d7a68, { flat: true })), -3.3, 0.38, -3.8));
+  g.add(at(box(0.5, 0.14, 0.7, mat(0x8a949c)), -3.35, 0.6, 2.7)); // pillow
+  g.add(at(box(1.0, 0.06, 1.9, mat(0x2a3138)), -3.35, 0.55, 3.5)); // rumpled blanket
+  // workbench along the port-forward wall, mid-repair
+  g.add(at(box(1.3, 0.1, 2.0, mat(0x4a565f, { metal: 0.4 })), -3.3, 0.9, -1.0));
+  for (const z of [-1.8, -1.0, -0.2]) g.add(at(box(0.1, 0.9, 0.1, trim), -3.85, 0.45, z));
+  g.add(at(box(0.34, 0.22, 0.34, mat(0x8a949c, { metal: 0.5 })), -3.3, 1.06, -1.6)); // tool caddy
+  g.add(at(box(0.5, 0.06, 0.35, mat(0x2a3138)), -3.3, 0.98, -0.4)); // opened access panel
+  g.add(at(sph(0.05, mat(0x7dffa8, { emissive: 0x7dffa8, emissiveIntensity: 0.9 })), -3.3, 1.05, -0.4)); // diagnostic light
+  g.add(at(box(0.06, 0.5, 1.4, trim), -3.96, 1.7, -1.0)); // tool board
+  for (const z of [-1.5, -1.1, -0.7]) g.add(at(cyl(0.03, 0.03, 0.42, mat(0x8a949c, { metal: 0.6 })), -3.82, 1.7, z));
+  // tall equipment locker, port-forward corner
+  g.add(at(box(0.9, 2.0, 0.6, mat(0x3a444c, { metal: 0.35 })), -3.3, 1.0, -3.9));
+  g.add(at(box(0.05, 1.6, 0.06, trim), -2.84, 1.0, -3.9)); // door seam
+  g.add(at(box(0.06, 0.06, 0.06, mat(0xffb454, { emissive: 0xffb454, emissiveIntensity: 0.9 })), -2.83, 1.45, -3.9));
+  // pilot seat facing the cockpit window
+  g.add(at(box(0.6, 0.12, 0.6, mat(0x3f4c56)), -1.2, 0.55, -3.9));
+  g.add(at(box(0.6, 0.75, 0.12, mat(0x3f4c56)), -1.2, 0.98, -4.18));
+  g.add(at(cyl(0.09, 0.11, 0.5, trim), -1.2, 0.27, -3.9)); // pedestal
+  // stowed crates, starboard-aft
   const crate2 = at(box(0.65, 0.65, 0.65, mat(0x7a6a56, { flat: true })), 2.9, 0.33, 3.9);
   crate2.rotation.y = 0.4;
   g.add(crate2);
+  g.add(at(box(0.5, 0.5, 0.5, mat(0x6d7a68, { flat: true })), 3.25, 0.25, 3.05));
+  // floor guidance stripes
+  for (const x of [-2.2, 2.2]) g.add(at(box(0.12, 0.02, L - 1.6, mat(0x59d6ff, { emissive: 0x59d6ff, emissiveIntensity: 0.22 })), x, 0.011, 0));
+  g.add(at(box(W - 1.8, 0.02, 0.12, mat(0xffb454, { emissive: 0xffb454, emissiveIntensity: 0.18 })), 0, 0.011, 1.4));
+  // wall status panels with indicator LEDs (port + starboard)
+  for (const s of [-1, 1] as const) {
+    const wx = s === 1 ? -hx + 0.12 : hx - 0.12;
+    g.add(at(box(0.05, 0.55, 0.85, mat(0x11181d, { emissive: 0x1a2a30, emissiveIntensity: 0.5 })), wx, 1.85, 2.4 * s));
+    for (let i = 0; i < 3; i++) g.add(at(box(0.04, 0.09, 0.09, mat(0x7dffa8, { emissive: 0x7dffa8, emissiveIntensity: 0.8 })), wx + s * 0.02, 2.0, 2.4 * s - 0.22 + i * 0.22));
+  }
+  // caution chevrons flanking the hatch
+  for (const s of [-1, 1]) g.add(at(box(0.12, 1.8, 0.03, mat(0xffb454, { emissive: 0xffb454, emissiveIntensity: 0.22 })), s * 0.85, 1.1, hz - 0.02));
+  // overhead cable bundle running the length
+  const cable = cyl(0.05, 0.05, L - 1, mat(0x1c242a));
+  cable.rotation.x = Math.PI / 2;
+  cable.position.set(0.6, H - 0.35, 0);
+  g.add(cable);
 
   const colliders: Collider[] = [
     { minX: -hx, maxX: hx, minZ: -hz - 1, maxZ: -hz + 0.15 },
@@ -1156,10 +1199,12 @@ export function buildShipInterior(): ShipInterior {
     { minX: -hx - 1, maxX: -hx + 0.15, minZ: -hz, maxZ: hz },
     { minX: hx - 0.15, maxX: hx + 1, minZ: -hz, maxZ: hz },
     { minX: -1.15, maxX: 1.15, minZ: -3.65, maxZ: -1.35 }, // map table
-    { minX: hx - 0.6, maxX: hx, minZ: -1.4, maxZ: 0.4 }, // gerty console
+    { minX: hx - 0.6, maxX: hx, minZ: -1.4, maxZ: 0.4 }, // gerty dock frame
     { minX: -4.2, maxX: -2.7, minZ: 2.3, maxZ: 4.5 }, // bunk
-    { minX: -3.75, maxX: -2.85, minZ: -4.25, maxZ: -3.35 }, // crate
-    { minX: 2.45, maxX: 3.35, minZ: 3.45, maxZ: 4.35 }, // crate
+    { minX: -4.1, maxX: -2.6, minZ: -2.1, maxZ: 0.1 }, // workbench
+    { minX: -3.85, maxX: -2.75, minZ: -4.3, maxZ: -3.5 }, // locker
+    { minX: -1.65, maxX: -0.75, minZ: -4.45, maxZ: -3.55 }, // pilot seat
+    { minX: 2.45, maxX: 3.6, minZ: 2.7, maxZ: 4.4 }, // crates
   ];
 
   const hotspots: InteriorHotspot[] = [
@@ -1169,6 +1214,50 @@ export function buildShipInterior(): ShipInterior {
   ];
 
   return { group: g, colliders, hotspots };
+}
+
+/**
+ * GERTY — a mobile shipboard robot. The head/face points along local +Z, so
+ * the owner just yaws the group to aim GERTY at the player. Named nodes:
+ * 'gerty-eye', 'gerty-screen' (pulse/brighten while speaking) and
+ * 'gerty-hover' (the antigrav underglow). Origin sits on the deck (y=0).
+ */
+export function buildGertyBot(): THREE.Group {
+  const g = new THREE.Group();
+  const shell = mat(C.hull, { metal: 0.5, rough: 0.4 });
+  const dark = mat(C.hullDark, { metal: 0.4 });
+  const bezel = mat(C.frame, { metal: 0.5 });
+  // hover base + antigrav underglow
+  g.add(at(cyl(0.28, 0.4, 0.16, dark), 0, 0.16, 0));
+  const hover = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.42, 0.28, 0.05, 20),
+    mat(C.accent, { emissive: C.accent, emissiveIntensity: 0.9, transparent: true, opacity: 0.85 }),
+  );
+  hover.position.y = 0.04;
+  hover.name = 'gerty-hover';
+  g.add(hover);
+  // torso
+  g.add(at(cyl(0.3, 0.34, 0.5, shell), 0, 0.5, 0));
+  g.add(at(cyl(0.36, 0.36, 0.1, bezel), 0, 0.4, 0));
+  g.add(at(sph(0.34, shell), 0, 0.8, 0));
+  // side pods (manipulator arms, tucked)
+  for (const s of [-1, 1]) {
+    g.add(at(cyl(0.07, 0.07, 0.34, dark), s * 0.34, 0.62, 0));
+    g.add(at(sph(0.1, shell), s * 0.5, 0.62, 0));
+  }
+  // head + face (faces +Z)
+  g.add(at(box(0.5, 0.4, 0.28, dark), 0, 1.14, 0.02));
+  g.add(at(box(0.44, 0.34, 0.04, bezel), 0, 1.14, 0.17));
+  const screen = at(box(0.4, 0.3, 0.04, mat(0x0c2a26, { emissive: 0x1f6a5a, emissiveIntensity: 0.6 })), 0, 1.14, 0.2);
+  screen.name = 'gerty-screen';
+  g.add(screen);
+  const eye = at(sph(0.09, mat(0xffffff, { emissive: C.green, emissiveIntensity: 1.1 }), 12), 0, 1.16, 0.24);
+  eye.name = 'gerty-eye';
+  g.add(eye);
+  // antenna
+  g.add(at(cyl(0.02, 0.02, 0.22, bezel), 0.16, 1.42, -0.02));
+  g.add(at(sph(0.045, mat(C.amber, { emissive: C.amber, emissiveIntensity: 0.9 })), 0.16, 1.55, -0.02));
+  return g;
 }
 
 // ---- star map markers ----
