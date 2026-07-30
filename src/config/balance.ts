@@ -161,8 +161,9 @@ export const BALANCE = {
       perRelay: 3,
       /** day/night cycle that drives solar output */
       dayNight: {
-        /** seconds for one full day+night; t=0 starts at solar noon */
-        periodSec: 120,
+        /** seconds for one full day+night (half day, half night); t=0 starts
+         * at solar noon — 600 = 5 minutes of day, 5 of night */
+        periodSec: 600,
       },
       /** solar-array-specific behaviour */
       solar: {
