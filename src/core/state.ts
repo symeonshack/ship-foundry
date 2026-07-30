@@ -9,6 +9,7 @@ import {
 import type { PartId } from '../building/partCatalog';
 import type { StructureInstance } from '../base/structures';
 import type { DroneInstance } from '../base/drones';
+import { BALANCE } from '../config/balance';
 
 export type { StructureInstance, DroneInstance };
 
@@ -96,6 +97,10 @@ export interface BaseState {
   structures: StructureInstance[];
   drones: DroneInstance[];
   rallyPoint: { x: number; z: number } | null;
+  /** solar flare hazard (Phase 25): playSeconds timestamp of the next scheduled flare */
+  nextFlareAt: number;
+  /** playSeconds timestamp the current flare warning resolves at; null = no warning active */
+  flareWarningUntil: number | null;
 }
 
 export interface GameState {
@@ -165,7 +170,13 @@ export function createNewGame(): GameState {
     encounter: { started: false, solved: false, turnCount: 0, modules: [] },
     items: [],
     structure: { panelOpened: false, maintOpen: false, fragmentTaken: false, logsRead: [] },
-    base: { structures: [], drones: [], rallyPoint: null },
+    base: {
+      structures: [],
+      drones: [],
+      rallyPoint: null,
+      nextFlareAt: BALANCE.landingZone.hazards.flare.firstAt,
+      flareWarningUntil: null,
+    },
   };
 }
 

@@ -11,6 +11,7 @@ import { Refinery } from './mining/refinery';
 import { BaseSim } from './base/baseSim';
 import { STRUCTURES } from './base/structures';
 import { DRONES, type DroneId } from './base/drones';
+import { BALANCE } from './config/balance';
 import { autoRefuel } from './mining/hauling';
 import { ShipyardScreen } from './building/shipyard';
 import { LanderScreen } from './lander/landerScene';
@@ -121,6 +122,13 @@ bus.on('drone:produced', ({ defId }) => {
   toast(`${DRONES[defId as DroneId].name} rolled out`, 'good');
   saveGame(store.state);
 });
+bus.on('flare:warning', ({ countdownSec }) => {
+  toast(`⚠ Solar flare inbound — impact in ~${countdownSec}s`, 'warn');
+});
+bus.on('flare:strike', ({ hits }) => {
+  toast(hits > 0 ? `Solar flare hit — ${hits} structure${hits === 1 ? '' : 's'} damaged` : 'Solar flare passed over — nothing exposed to it', hits > 0 ? 'bad' : 'info');
+  saveGame(store.state);
+});
 window.addEventListener('beforeunload', () => saveGame(store.state));
 
 // rollback checkpoints at the moments worth retrying from
@@ -147,7 +155,19 @@ manager.start();
 // normalize saves from before Landing Zone's base-building state existed
 {
   const raw = store.state as { base?: GameState['base'] };
-  if (!raw.base) raw.base = { structures: [], drones: [], rallyPoint: null };
+  if (!raw.base) {
+    raw.base = { structures: [], drones: [], rallyPoint: null, nextFlareAt: BALANCE.landingZone.hazards.flare.firstAt, flareWarningUntil: null };
+  }
+}
+
+// saves from before the flare hazard (Phase 25) existed — schedule the first
+// one fresh rather than backdating it against however long the save has run
+{
+  const base = store.state.base as { nextFlareAt?: number; flareWarningUntil?: number | null };
+  if (typeof base.nextFlareAt !== 'number') {
+    base.nextFlareAt = store.state.playSeconds + BALANCE.landingZone.hazards.flare.firstAt;
+    base.flareWarningUntil = null;
+  }
 }
 
 // saves from before the orbit/ground split default to being aboard the ship

@@ -195,6 +195,23 @@ export const BALANCE = {
        * batches several worker-loads per trip to base */
       haulerCarry: 8,
     },
+    /** environmental hazard escalation (Phase 25) — the plan calls for the
+     * first flare to be guaranteed early so every player learns the hardening
+     * lesson firsthand; later ones recur at random intervals */
+    hazards: {
+      flare: {
+        /** playSeconds before the first, guaranteed flare */
+        firstAt: 150,
+        /** subsequent flares recur randomly within this range (seconds) */
+        minInterval: 240,
+        maxInterval: 420,
+        /** lead time between the warning and the strike — no satellite yet
+         * for a longer lead time (the plan's "tiered warning") */
+        warningSec: 25,
+        /** fraction of maxHp each active structure loses in one strike */
+        damageFraction: 0.22,
+      },
+    },
   },
 
   /** The #terrain proof-of-concept range (dev harness screen, not a gameplay site). */

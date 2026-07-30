@@ -155,6 +155,16 @@ html, body {
   animation: dev-pulse 2s infinite;
   white-space: nowrap;
 }
+#flare-badge {
+  padding: 1px 8px;
+  border: 1px solid var(--amber);
+  border-radius: 4px;
+  color: var(--amber);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  animation: dev-pulse 1s infinite;
+  white-space: nowrap;
+}
 @keyframes dev-pulse { 50% { opacity: 0.45; } }
 #nav { margin-left: auto; display: flex; gap: 6px; }
 

@@ -56,6 +56,7 @@ export class Hud {
   private hint: HTMLElement;
   private devBadge: HTMLElement;
   private drainBadge: HTMLElement;
+  private flareBadge: HTMLElement;
   private activeScreen: ScreenId = 'interior';
 
   constructor(private ctx: Ctx) {
@@ -106,6 +107,12 @@ export class Hud {
     this.drainBadge.title = 'Ambient pressure: fuel drains continuously until solar power, an on-site refinery, and storage are all standing at the Landing Zone.';
     this.drainBadge.style.display = 'none';
     top.appendChild(this.drainBadge);
+
+    this.flareBadge = el('span');
+    this.flareBadge.id = 'flare-badge';
+    this.flareBadge.title = 'Solar flare inbound — unhardened structures at the Landing Zone will take damage on impact.';
+    this.flareBadge.style.display = 'none';
+    top.appendChild(this.flareBadge);
 
     this.location = el('span');
     this.location.id = 'location';
@@ -233,6 +240,14 @@ export class Hud {
     this.location.textContent = `SITE • ${def.name.toUpperCase()}`;
     this.devBadge.style.display = this.ctx.store.hasFlag(FLAGS.DEV_MODE) ? '' : 'none';
     this.drainBadge.style.display = pressureActive(s.base.structures) ? '' : 'none';
+    const flareUntil = s.base.flareWarningUntil;
+    if (flareUntil !== null) {
+      const remaining = Math.max(0, Math.ceil(flareUntil - s.playSeconds));
+      this.flareBadge.textContent = `☀ FLARE T-${remaining}s`;
+      this.flareBadge.style.display = '';
+    } else {
+      this.flareBadge.style.display = 'none';
+    }
 
     const atHome = s.currentPoi === 'foundry';
     const inFlight = this.activeScreen === 'flight';

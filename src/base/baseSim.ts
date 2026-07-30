@@ -14,6 +14,7 @@ import { STRUCTURES, canRepair, repairCost, tickConstruction, tickRepair, type S
 import { isGeneratorRunning, tickNuclear, tickSolar } from './power';
 import { manageHaulers, spawnDrone, tickDroneTask, tickFabricator } from './drones';
 import { footprintAt } from './placement';
+import { tickFlare } from './hazards';
 
 /** notify (and re-render) at most this often for continuous numeric drift —
  * fuel drain, isotope burn — the top bar doesn't need 60fps precision, and
@@ -46,6 +47,7 @@ export class BaseSim {
   private wasPressureActive: boolean | null = null;
   private drainNotifyTimer = 0;
   private isotopeNotifyTimer = 0;
+  private flareNotifyTimer = 0;
 
   constructor(private store: GameStore) {}
 
@@ -119,6 +121,28 @@ export class BaseSim {
         this.isotopeNotifyTimer = 0;
         transitions = true;
       }
+    }
+
+    // solar flare hazard escalation: the warning/strike moments are real
+    // transitions; a live countdown in between is continuous drift, throttle-
+    // notified the same way fuel drain and isotope burn are
+    const flare = tickFlare(this.store, dt);
+    if (flare?.type === 'warning') {
+      this.store.bus.emit('flare:warning', { countdownSec: flare.countdownSec });
+      transitions = true;
+    } else if (flare?.type === 'strike') {
+      for (const d of flare.destroyed) this.store.bus.emit('structure:destroyed', d);
+      this.store.bus.emit('flare:strike', { hits: flare.hits });
+      transitions = true;
+    }
+    if (this.store.state.base.flareWarningUntil !== null) {
+      this.flareNotifyTimer += dt;
+      if (this.flareNotifyTimer >= CONTINUOUS_NOTIFY_INTERVAL) {
+        this.flareNotifyTimer = 0;
+        transitions = true;
+      }
+    } else {
+      this.flareNotifyTimer = 0;
     }
 
     // ambient pressure: drains fuel until the base is minimally self-sufficient

@@ -32,6 +32,9 @@ export const LINES: LineDef[] = [
   { id: 'node-collapse', trigger: 'node-collapsed', maxTimes: 99, cooldownSec: 30, text: 'Deposit collapsed. The moon does that. Nothing personal — there is nobody out here for it to be personal.' },
   { id: 'fuel-low', trigger: 'fuel-low', maxTimes: 99, cooldownSec: 90, mood: 'hint', text: 'Fuel margin is thin. I recommend heading home while “recommend” is still the right word.' },
   { id: 'stranded', trigger: 'stranded', maxTimes: 99, cooldownSec: 60, mood: 'hint', text: 'We do not have the fuel to get home. Options: emergency burn — which means jettisoning the hold — or you make fuel appear. I’ll wait.' },
+  { id: 'flare-warning', trigger: 'flare-warning', maxTimes: 99, cooldownSec: 20, mood: 'hint', text: 'Solar flare inbound. Anything standing unshielded is about to feel it — there is nothing to build yet that stops this, only repairs after.' },
+  { id: 'flare-strike', trigger: 'flare-strike', maxTimes: 99, cooldownSec: 20, text: 'Flare impact logged. Structural damage across the site — nothing fatal this time. Repair when you can afford to.' },
+  { id: 'flare-miss', trigger: 'flare-miss', maxTimes: 99, cooldownSec: 20, mood: 'hint', text: 'Flare passed with nothing standing to hit. Cheap lesson, that one.' },
 
   // ---- flight ----
   { id: 'first-flight', trigger: 'flight', priority: 2, mood: 'hint', text: 'You have the stick. Drift is your own cargo arrangement talking back — counter it, and mind the throttle. I’ll handle everything except the flying.' },

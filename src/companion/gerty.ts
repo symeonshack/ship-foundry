@@ -89,6 +89,8 @@ export class Gerty {
     bus.on('fuel:low', () => this.notify('fuel-low'));
     bus.on('fuel:stranded', () => this.notify('stranded'));
     bus.on('hazard:warning', ({ hazard }) => this.notify(`hazard:${hazard}`));
+    bus.on('flare:warning', () => this.notify('flare-warning'));
+    bus.on('flare:strike', ({ hits }) => this.notify(hits > 0 ? 'flare-strike' : 'flare-miss'));
     bus.on('encounter:turn', ({ actor }) => {
       if (actor === 'collaborator') this.notify('encounter-response');
     });

@@ -35,9 +35,12 @@ export interface GameEvents {
   /** a nuclear generator ran dry / came back on stream (Phase 15) */
   'power:generatorOffline': { uid: string; defId: string };
   'power:generatorOnline': { uid: string; defId: string };
-  /** a Fabricator queue job finished (Phase 17) — no world entity yet, that's Phase 24 */
+  /** a Fabricator queue job finished (Phase 17); production spawns a real world entity (Phase 24) */
   'drone:produced': { defId: string };
   'drone:idle': Record<string, never>;
+  /** solar flare hazard escalation (Phase 25): a short lead-time warning, then the strike */
+  'flare:warning': { countdownSec: number };
+  'flare:strike': { hits: number };
 
   'refine:complete': { recipeId: string; output: RefinedResourceId };
   'build:placed': { partId: PartId };
