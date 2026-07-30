@@ -3,7 +3,6 @@ import type { GameScreen } from '../scene/renderer';
 import type { Ctx } from '../core/ctx';
 import { makeCamera, makeOrbit } from '../scene/camera';
 import {
-  addBasicLights,
   addStars,
   buildDepositNode,
   buildLander,
@@ -15,6 +14,7 @@ import {
   mat,
   mulberry32,
 } from '../scene/primitives';
+import { DayNightSky } from '../scene/dayNight';
 import { ChunkedTerrain } from '../terrain/chunkManager';
 import { BALANCE } from '../config/balance';
 import { nodeCountFor, rollCollapse, rollYield } from './nodeLayout';
@@ -104,6 +104,7 @@ export class SurfaceScreen implements GameScreen {
   private hoverTip: HTMLElement;
   private footTarget: FootTarget | null = null;
   private wasInZone = false;
+  private dayNight!: DayNightSky;
   private landerPos = { x: 2, z: 2 };
   /** held WASD/arrow keys — RTS keyboard pan, consumed in command mode only */
   private panKeys = new Set<string>();
@@ -155,8 +156,9 @@ export class SurfaceScreen implements GameScreen {
     };
     // pan across the site, not across the screen plane
     this.controls.screenSpacePanning = false;
-    addBasicLights(this.scene);
-    addStars(this.scene);
+    // day/night: a moving sun/moon drive the lighting and sky colour; the
+    // starfield it fades in after dark is created here and handed to it
+    this.dayNight = new DayNightSky(this.scene, undefined, addStars(this.scene));
     this.scene.add(this.site);
 
     this.controller = new PlayerController(this.camera, canvas, this.footColliders, new THREE.Vector3(5, 0, 5));
@@ -243,6 +245,8 @@ export class SurfaceScreen implements GameScreen {
     this.scene.background = new THREE.Color(this.def.skyColor);
     // fog hides the chunk-streaming horizon (cold sites override, denser, below)
     this.scene.fog = new THREE.Fog(this.def.skyColor, BALANCE.surface.fogNear, BALANCE.surface.fogFar);
+    // the day/night cycle recolours sky+fog from this site's daytime sky
+    this.dayNight.setDaySky(this.def.skyColor);
 
     const terrain = new ChunkedTerrain(this.def.terrainSeed, this.def.terrainColor);
     this.terrain = terrain;
@@ -846,6 +850,7 @@ export class SurfaceScreen implements GameScreen {
   update(dt: number): void {
     this.t += dt;
     this.excursion += dt;
+    this.dayNight.update(this.ctx.store.state.playSeconds);
     if (this.mode === 'command') {
       this.keyboardPan(dt);
       this.controls.update();

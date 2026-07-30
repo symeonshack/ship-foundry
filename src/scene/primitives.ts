@@ -1664,7 +1664,7 @@ export function addBasicLights(scene: THREE.Scene, sunColor = 0xfff4e0, ambient 
   scene.add(fill);
 }
 
-export function addStars(scene: THREE.Scene, count = 500, radius = 400): void {
+export function addStars(scene: THREE.Scene, count = 500, radius = 400): THREE.Points {
   const geo = new THREE.BufferGeometry();
   const positions = new Float32Array(count * 3);
   const rand = mulberry32(9001);
@@ -1677,5 +1677,7 @@ export function addStars(scene: THREE.Scene, count = 500, radius = 400): void {
   }
   geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
   // fog: false — stars are backdrop, not scenery; site fog must never erase the sky
-  scene.add(new THREE.Points(geo, new THREE.PointsMaterial({ color: 0x9fb6c4, size: 1.1, sizeAttenuation: false, fog: false })));
+  const stars = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0x9fb6c4, size: 1.1, sizeAttenuation: false, fog: false }));
+  scene.add(stars);
+  return stars;
 }
