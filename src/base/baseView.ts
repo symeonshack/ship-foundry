@@ -761,9 +761,9 @@ export class BaseView {
       this.renderIdleControl(ctrl);
     }
 
-    // dev-mode drone spawn: real production is wired to the Fabricator queue
-    // at Phase 24 — until then, this is how movement/selection/orders get
-    // exercised at all, same spirit as the per-structure dev-damage button
+    // dev-mode drone spawn: real production now rolls drones out of a finished
+    // Fabricator job (Phase 24); these buttons stay only as a testing shortcut
+    // that skips the Refinery→Power Relay→Fabricator build chain
     if (store.hasFlag(FLAGS.DEV_MODE)) {
       const dev = box('Dev');
       const sx = fab ? fab.x + 2 : 0;

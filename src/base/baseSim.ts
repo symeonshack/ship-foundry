@@ -12,7 +12,7 @@ import { FLAGS } from '../core/flags';
 import type { GameStore } from '../core/state';
 import { STRUCTURES, canRepair, repairCost, tickConstruction, tickRepair, type StructureInstance } from './structures';
 import { isGeneratorRunning, tickNuclear, tickSolar } from './power';
-import { manageHaulers, tickDroneTask, tickFabricator } from './drones';
+import { manageHaulers, spawnDrone, tickDroneTask, tickFabricator } from './drones';
 import { footprintAt } from './placement';
 
 /** notify (and re-render) at most this often for continuous numeric drift —
@@ -87,9 +87,12 @@ export class BaseSim {
         isotopeConsumed = true;
       }
 
-      // fabricator: each finished unit is a real transition worth a toast,
-      // even though it doesn't spawn a world entity yet (Phase 24)
+      // fabricator: each finished unit rolls a real drone out onto the site
+      // just past the bay's +x edge (Phase 24). If a rally point is set,
+      // spawnDrone sends it there straight away.
       for (const defId of tickFabricator(inst, dt)) {
+        const footprint = STRUCTURES[inst.defId].footprint;
+        spawnDrone(this.store, defId, inst.x + footprint.w / 2 + 0.7, inst.z + (Math.random() - 0.5) * footprint.d);
         this.store.bus.emit('drone:produced', { defId });
         transitions = true;
       }

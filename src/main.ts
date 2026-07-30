@@ -118,7 +118,7 @@ bus.on('power:generatorOnline', () => {
   toast('Nuclear Generator back online', 'good');
 });
 bus.on('drone:produced', ({ defId }) => {
-  toast(`${DRONES[defId as DroneId].name} ready`, 'good');
+  toast(`${DRONES[defId as DroneId].name} rolled out`, 'good');
   saveGame(store.state);
 });
 window.addEventListener('beforeunload', () => saveGame(store.state));

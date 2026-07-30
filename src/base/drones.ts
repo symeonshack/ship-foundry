@@ -13,8 +13,9 @@
  * why haulers service worker drones (all in base state) and not the deployed
  * rigs (session-scoped, gone the moment you leave the surface screen).
  *
- * Spawning a drone from a completed Fabricator job is still Phase 24 — until
- * then, BaseView's dev-mode panel spawns one directly.
+ * A completed Fabricator job now rolls a real drone out onto the site via
+ * spawnDrone (Phase 24), so production is the live gameplay path; BaseView's
+ * dev-mode spawn buttons remain only as a testing shortcut.
  */
 import type { Collider } from '../interior/playerController';
 import { moveWithCollision } from '../interior/playerController';
