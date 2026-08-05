@@ -1,6 +1,6 @@
 # Ship Foundry (v1 MVP)
 
-A non-combat sci-fi exploration and building game. Scan, mine, refine, and build your way outward through one star system — tension comes from radiation, cold, collapsing terrain, and fuel math, never from a weapon. See `ship-foundry-build-spec.md` for the full design.
+A non-combat sci-fi exploration and building game. Scan, mine, refine, and build your way outward through one star system — tension comes from radiation, cold, collapsing terrain, hazards, and fuel math, never from a weapon. `landing-zone-plan.md` is the authoritative build plan; `AGENTS.md` onboards contributors (including how phase tracking works). The older `*-build-spec.md` files are historical design reference.
 
 ## Run
 
@@ -8,7 +8,7 @@ A non-combat sci-fi exploration and building game. Scan, mine, refine, and build
 npm install
 npm run dev      # live-reloading dev server
 npm run build    # typecheck + static production build (dist/)
-npm test         # unit tests (stats, refinery, GERTY, encounter logic)
+npm test         # unit tests (ship stats, base sim, hazards, drones, mission, refinery, GERTY, …)
 ```
 
 ## Play

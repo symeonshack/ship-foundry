@@ -13,12 +13,11 @@ what's actually playable right now (controls, screens, dev tools).
 ## The one doc that matters right now
 
 **`landing-zone-plan.md` is the single authoritative build plan.** It says so
-itself. There are three older spec files still in the repo
-(`ship-foundry-build-spec.md`, `mining-operations-build-spec.md`,
-`stage-0-foundry-establishment-template.md`, `operation-site-1-template.md`)
-— they're historical reference only, and **their "Phase N" numbering does
-not match reality.** Do not use numbers from those files to figure out
-where the project is. Use the method below instead.
+itself. The older spec files still in the repo (`ship-foundry-build-spec.md`,
+`mining-operations-build-spec.md`, `stage-0-foundry-establishment-template.md`,
+`operation-site-1-template.md`) are historical reference only, and **their
+"Phase N" numbering does not match reality.** Do not use numbers from those
+files to figure out where the project is. Use the method below instead.
 
 ## How phase tracking actually works here
 
@@ -38,10 +37,17 @@ completed phase, then `grep -rn "Phase [0-9]" src test` to see the highest
 number referenced and what forward-references say is still a stub.
 
 **Standing rule: commit at the end of every phase.** One phase = one commit
-(small related phases can be batched into one commit if they landed
-together, as with 16-18). Never leave a finished phase uncommitted — the
-git log is the only durable record of progress across sessions. Before
-committing: run `npm test` and make sure it's green.
+(related phases can be batched into one commit when they land together, as
+with 16-18 or 26-30). Never leave a finished phase uncommitted — the git log
+is the only durable record of progress across sessions. Also keep
+`GAMEPLAY.md` in step with what a player can now do.
+
+**Verify before you commit.** A phase is usually a full vertical slice —
+state → sim → HUD/panel → GERTY lines → tests. Run `npx tsc --noEmit` and
+`npx vitest run` (both must be green), unit-test the pure logic, and for any
+visual or gameplay change drive the real app in headless Chromium (the
+`verify` skill / a Playwright script against `window.__game`) and confirm
+zero console errors before committing.
 
 ## Working rules (from `landing-zone-plan.md`, still binding)
 
