@@ -227,6 +227,12 @@ export const BALANCE = {
       /** a launched Weather Satellite (Phase 33) multiplies every hazard's
        * warning lead time — crude last-second notice becomes real lead time */
       weatherLeadMultiplier: 2.5,
+      /** under-construction structures are more fragile: a hazard hits them for
+       * this multiple of the normal fraction (Phase 50 / "41") */
+      underConstructionMultiplier: 1.7,
+      /** an unsheltered drone caught out in a strike has this chance to be lost;
+       * garrisoning it in a structure keeps it safe (Phase 60 / "44") */
+      droneStrikeLossChance: 0.4,
     },
     /** mission arc (Phase 28/29): accumulate this much high-grade ore, banked
      * cumulatively, to hit the resource quota and trigger the discovery event */

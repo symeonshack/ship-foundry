@@ -12,7 +12,7 @@ import { FLAGS } from '../core/flags';
 import type { GameStore } from '../core/state';
 import { STRUCTURES, canRepair, repairCost, tickConstruction, tickRepair, type StructureInstance } from './structures';
 import { isGeneratorRunning, tickNuclear, tickSolar } from './power';
-import { manageHaulers, spawnDrone, tickDroneTask, tickFabricator } from './drones';
+import { manageHaulers, separateDrones, spawnDrone, tickDroneTask, tickFabricator, unshelterAll } from './drones';
 import { footprintAt } from './placement';
 import { tickFlare, tickStorm } from './hazards';
 import { tickLaunch } from './satellites';
@@ -118,6 +118,7 @@ export class BaseSim {
       tickDroneTask(this.store, d, dt, droneColliders);
       if (d.status !== before) transitions = true;
     }
+    separateDrones(this.store.state.base.drones); // keep them from bunching up (Phase 59)
 
     if (isotopeConsumed) {
       this.isotopeNotifyTimer += dt;
@@ -136,7 +137,9 @@ export class BaseSim {
       transitions = true;
     } else if (flare?.type === 'strike') {
       for (const d of flare.destroyed) this.store.bus.emit('structure:destroyed', d);
+      if (flare.dronesLost.length > 0) this.store.bus.emit('drone:lost', { count: flare.dronesLost.length });
       this.store.bus.emit('flare:strike', { hits: flare.hits });
+      unshelterAll(this.store); // the flash is over — drones come back out
       transitions = true;
     }
     if (this.store.state.base.flareWarningUntil !== null) {
@@ -156,10 +159,12 @@ export class BaseSim {
       transitions = true;
     } else if (storm?.type === 'begin') {
       for (const d of storm.destroyed) this.store.bus.emit('structure:destroyed', d);
+      if (storm.dronesLost.length > 0) this.store.bus.emit('drone:lost', { count: storm.dronesLost.length });
       this.store.bus.emit('storm:begin', { hits: storm.hits });
       transitions = true;
     } else if (storm?.type === 'end') {
       this.store.bus.emit('storm:end', {});
+      unshelterAll(this.store); // storm's passed — drones leave shelter
       transitions = true;
     }
     if (this.store.state.base.stormWarningUntil !== null || this.store.state.base.stormActiveUntil !== null) {
@@ -228,6 +233,20 @@ export class BaseSim {
       this.drainNotifyTimer += dt;
       if (this.drainNotifyTimer >= CONTINUOUS_NOTIFY_INTERVAL) {
         this.drainNotifyTimer = 0;
+        transitions = true;
+      }
+    }
+
+    // total-wipe failure state (Phase 45): the rare, avoidable game-over — you
+    // built a base, lost every last structure to ruins, and starved on top of
+    // it. A fresh game (no structures yet) can never hit this.
+    if (!this.store.hasFlag(FLAGS.GAME_OVER)) {
+      const structs = this.store.state.base.structures;
+      const anyStanding = structs.some((s) => s.status === 'active' || s.status === 'building');
+      const anyWreck = structs.some((s) => s.status === 'destroyed');
+      if (anyWreck && !anyStanding && this.store.state.food.level <= 0) {
+        this.store.setFlag(FLAGS.GAME_OVER, true);
+        this.store.bus.emit('game:over', {});
         transitions = true;
       }
     }

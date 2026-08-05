@@ -172,6 +172,13 @@ bus.on('mission:complete', () => {
 });
 bus.on('food:low', () => toast('Food running low — the greenhouse chain needs to keep up', 'warn'));
 bus.on('food:contaminated', () => toast('A harvest was lost to contamination — repair the greenhouse', 'bad'));
+bus.on('drone:lost', ({ count }) => {
+  toast(`${count} drone${count === 1 ? '' : 's'} caught in the open and lost — shelter them next time`, 'bad');
+  saveGame(store.state);
+});
+bus.on('game:over', () => {
+  toast('TOTAL LOSS — the Landing Zone is gone', 'bad');
+});
 // one-shot milestone checks: infrastructure first, then the full mission
 bus.on('state:changed', () => {
   if (!store.hasFlag(FLAGS.MISSION_ESTABLISHED) && operationEstablished(store)) {

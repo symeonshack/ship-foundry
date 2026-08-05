@@ -100,6 +100,8 @@ export class Gerty {
     bus.on('food:low', () => this.notify('food-low'));
     bus.on('food:harvest', () => this.notify('food-harvest'));
     bus.on('food:contaminated', () => this.notify('food-contaminated'));
+    bus.on('drone:lost', () => this.notify('drone-lost'));
+    bus.on('game:over', () => this.notify('game-over'));
     bus.on('encounter:turn', ({ actor }) => {
       if (actor === 'collaborator') this.notify('encounter-response');
     });

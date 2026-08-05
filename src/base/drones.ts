@@ -35,9 +35,11 @@ export interface DroneInstance {
   defId: DroneId;
   x: number;
   z: number;
-  status: 'idle' | 'moving' | 'gathering' | 'returning';
+  status: 'idle' | 'moving' | 'gathering' | 'returning' | 'sheltered';
   /** current movement destination; cleared on arrival */
   target: { x: number; z: number } | null;
+  /** garrison/shelter (Phase 60): en route to shelter → becomes 'sheltered' on arrival */
+  sheltering?: boolean;
   /** worker drones on a gather loop: the deposit they're assigned to */
   nodeId?: string;
   /** units currently held — banked to stock on return (workers) / delivery (haulers) */
@@ -181,6 +183,104 @@ export function orderMove(drone: DroneInstance, x: number, z: number): void {
   drone.hauledBy = undefined; // worker: detach from its hauler (which self-heals)
   drone.target = { x, z };
   drone.status = 'moving';
+}
+
+/**
+ * Formation offsets for moving N drones to one point (Phase 59): a filled
+ * centre plus concentric rings, so a group spreads out instead of stacking on
+ * a single spot. Returned in drone order; index 0 is the centre.
+ */
+export function formationOffsets(n: number, spacing = 1.3): { dx: number; dz: number }[] {
+  if (n <= 1) return [{ dx: 0, dz: 0 }];
+  const out: { dx: number; dz: number }[] = [{ dx: 0, dz: 0 }];
+  let ring = 1;
+  while (out.length < n) {
+    const count = ring * 6;
+    for (let i = 0; i < count && out.length < n; i++) {
+      const a = (i / count) * Math.PI * 2;
+      out.push({ dx: Math.cos(a) * ring * spacing, dz: Math.sin(a) * ring * spacing });
+    }
+    ring += 1;
+  }
+  return out;
+}
+
+/**
+ * Gently push overlapping drones apart each tick (Phase 59) so they don't
+ * bunch on top of each other or path through one another. Sheltered drones
+ * stay put. O(n²), fine for the small home roster.
+ */
+export function separateDrones(drones: DroneInstance[], minSep = 0.9): void {
+  for (let i = 0; i < drones.length; i++) {
+    const a = drones[i]!;
+    if (a.status === 'sheltered') continue;
+    for (let j = i + 1; j < drones.length; j++) {
+      const b = drones[j]!;
+      if (b.status === 'sheltered') continue;
+      const dx = b.x - a.x;
+      const dz = b.z - a.z;
+      const d = Math.hypot(dx, dz);
+      if (d > 1e-4 && d < minSep) {
+        const push = (minSep - d) * 0.25;
+        const ux = dx / d;
+        const uz = dz / d;
+        a.x -= ux * push;
+        a.z -= uz * push;
+        b.x += ux * push;
+        b.z += uz * push;
+      }
+    }
+  }
+}
+
+/** send a drone to shelter at (x,z) — it becomes 'sheltered' (hazard-safe) on arrival */
+export function orderShelter(drone: DroneInstance, x: number, z: number): void {
+  drone.nodeId = undefined;
+  drone.carrying = 0;
+  drone.haulTarget = undefined;
+  drone.hauledBy = undefined;
+  drone.sheltering = true;
+  drone.target = { x, z };
+  drone.status = 'moving';
+}
+
+/** bring every sheltered/sheltering drone back out to idle (after a hazard passes) */
+export function unshelterAll(store: GameStore): number {
+  let n = 0;
+  for (const d of store.state.base.drones) {
+    if (d.status === 'sheltered' || d.sheltering) {
+      d.status = 'idle';
+      d.sheltering = false;
+      d.target = null;
+      n += 1;
+    }
+  }
+  return n;
+}
+
+/**
+ * Send all drones to shelter at the nearest active structure. Returns how many
+ * were ordered (0 if there's nowhere to shelter). The base drop point is the
+ * fallback so drones still huddle at the pad when nothing else stands.
+ */
+export function shelterAll(store: GameStore): number {
+  const structures = store.state.base.structures.filter((s) => s.status === 'active');
+  let n = 0;
+  for (const d of store.state.base.drones) {
+    if (d.status === 'sheltered' || d.sheltering) continue;
+    let best: { x: number; z: number } | null = null;
+    let bestDist = Infinity;
+    for (const s of structures) {
+      const dist = Math.hypot(s.x - d.x, s.z - d.z);
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = { x: s.x, z: s.z };
+      }
+    }
+    orderShelter(d, best?.x ?? baseDropPoint(store).x, best?.z ?? baseDropPoint(store).z);
+    n += 1;
+  }
+  return n;
 }
 
 /** issue a gather order on a deposit — the return leg comes back to wherever the drone is now */
@@ -393,6 +493,16 @@ function tickHauler(store: GameStore, hauler: DroneInstance, dt: number, collide
  * other Landing Zone system.
  */
 export function tickDroneTask(store: GameStore, drone: DroneInstance, dt: number, colliders: Collider[]): void {
+  // garrison/shelter (Phase 60): a sheltered drone sits tight; one en route to
+  // shelter moves there and becomes sheltered on arrival
+  if (drone.status === 'sheltered') return;
+  if (drone.sheltering) {
+    if (tickDroneMove(drone, dt, colliders) === 'arrived') {
+      drone.status = 'sheltered';
+      drone.sheltering = false;
+    }
+    return;
+  }
   if (drone.defId === 'hauler') {
     tickHauler(store, drone, dt, colliders);
     return;

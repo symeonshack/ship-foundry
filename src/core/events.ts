@@ -53,6 +53,10 @@ export interface GameEvents {
   'mission:established': Record<string, never>;
   /** the full mission is complete — every objective incl. the greenhouse met (Phase 40) */
   'mission:complete': Record<string, never>;
+  /** unsheltered drones lost to a hazard strike (Phase 60) */
+  'drone:lost': { count: number };
+  /** the base has become non-viable — total-wipe game over (Phase 45) */
+  'game:over': Record<string, never>;
   /** food system (Phase 36-39) */
   'food:low': Record<string, never>;
   'food:restored': Record<string, never>;

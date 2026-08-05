@@ -125,6 +125,8 @@ At the Foundry/Landing Zone specifically, extraction feeds the base stockpile di
 
 **Find idle drone.** As the drone roster grows it's easy to leave one standing around doing nothing. The **Find idle drone (N)** button in the Drones box — or the **F** hotkey in command view — selects the next drone with no task and snaps the camera to it; press it again to cycle through the rest. The count in the label is how many are currently idle, and the button greys out when everything's busy.
 
+**Control groups & formations.** In command view, **Ctrl+1…9** assigns the current selection to a control group, and **1…9** recalls it (selecting those units and snapping the camera to them). When you send several drones to the same spot they spread into a small formation instead of stacking, and drones gently keep their spacing so they don't pile up or path through each other.
+
 **Hauler Drones automate the haul loop.** You don't order a hauler onto a deposit — instead, any idle hauler automatically attaches itself to the nearest worker that's gathering (or on its way to a deposit) and takes over the carrying. The worker then stays parked at the deposit mining continuously — its status reads "gathering · hauled" — while the hauler shuttles the output back to base (the Fabricator, else a Storage Silo, else the lander pad), batching several worker-loads per trip. One hauler serves one worker at a time; build more to keep more workers mining flat-out. A hauler releases its worker automatically once the deposit is exhausted, and giving a hauler a manual right-click move order detaches it (it stops auto-hauling until it next goes idle, at which point it looks for a new worker to help).
 
 **Ambient pressure:** landing is not free. A red **LIFE-SUPPORT DRAIN** badge next to the fuel gauge (top bar) means fuel is draining continuously — this only stops once a **Solar Array**, a **Refinery**, and a **Storage Silo** are all standing at once. The instant all three are up, the drain halts for good (a toast confirms it) — and if you later lose one of them, the drain resumes until it's rebuilt. Getting self-sufficient before the tank runs dry is the opening tension.
@@ -134,7 +136,11 @@ At the Foundry/Landing Zone specifically, extraction feeds the base stockpile di
 - **Solar flare** — a **☀ FLARE T-Ns** badge counts down a short warning; on impact every standing structure takes damage at once (visible as scorch/buckling). Build an **EM Shield** and, while it stands, flares do *no* damage to the base.
 - **Dust storm** — a **🌪 STORM T-Ns** badge warns, then the storm rolls in: it damages structures on arrival, **blacks out all solar** for the duration (the Power readout says so), and darkens the whole site until it blows over. Build a **Storm Shield** to negate the damage (it can't restore solar — that's what the Nuclear Generator is for).
 
-The two shields protect against *different* hazards and don't cover for each other — an EM Shield is useless in a storm, and a storm can knock down your EM Shield (and vice-versa). Damaged structures are fixed with **Repair**; you don't have to rebuild from scratch.
+The two shields protect against *different* hazards and don't cover for each other — an EM Shield is useless in a storm, and a storm can knock down your EM Shield (and vice-versa). Damaged structures are fixed with **Repair**; you don't have to rebuild from scratch. **Under-construction structures are more fragile** — a hazard hits a half-built structure harder than a finished one, so an ill-timed build can be knocked flat.
+
+**Drones get caught out too.** A hazard strike can destroy drones left in the open. When a warning goes up, hit **Shelter drones** in the Drones box — every drone tucks into the nearest structure and rides the strike out unharmed, then comes back out once it passes (get them inside *before* impact, not mid-run). 
+
+**Total loss.** There's one true game-over, and it's rare and avoidable: lose *every* structure to ruins **and** run the food meter to empty at the same time, and the Landing Zone is gone. A "Total loss" screen offers a rollback to any checkpoint (captured at wake-up, departures, docking, and major beats) or a fresh start.
 
 **The satellite array.** Once the Launch Pad is up, launch three satellites (comms first — it's the backbone — then weather and survey in either order):
 

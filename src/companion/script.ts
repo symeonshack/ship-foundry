@@ -52,6 +52,10 @@ export const LINES: LineDef[] = [
   { id: 'food-contaminated', trigger: 'food-contaminated', maxTimes: 99, cooldownSec: 45, mood: 'hint', text: 'Lost that crop to contamination — the greenhouse is damaged and the seal is compromised. Repair it and the next one should take.' },
   { id: 'mission-complete-full', trigger: 'mission-complete-full', priority: 7, text: 'Every box on the manifest is ticked, including the one about staying alive. The Landing Zone is fully established — powered, fed, hardened, surveyed, self-running. This was the mission they gave us. The one they did not is still out there, off the chart. Ready when you are. [PLACEHOLDER — arc-complete beat]' },
 
+  // ---- garrison & failure (Phase 44/45) ----
+  { id: 'drone-lost', trigger: 'drone-lost', maxTimes: 99, cooldownSec: 30, mood: 'hint', text: 'Lost drones out in the open when that hit. When a warning goes up, shelter them — a drone inside a structure rides it out. Cheaper than replacing them.' },
+  { id: 'game-over', trigger: 'game-over', priority: 9, text: 'That is everything. No power, nothing standing, and no food. I have kept the checkpoints — roll back to one and we try again from a better moment. I am not built to say this gently, so: we lost. Reload.' },
+
   // ---- flight ----
   { id: 'first-flight', trigger: 'flight', priority: 2, mood: 'hint', text: 'You have the stick. Drift is your own cargo arrangement talking back — counter it, and mind the throttle. I’ll handle everything except the flying.' },
   { id: 'hard-landing-1', trigger: 'hard-landing', maxTimes: 99, cooldownSec: 30, text: 'Logged as a “firm arrival.” The landing gear disagrees with my phrasing. Hold the retro-burn earlier next time.' },

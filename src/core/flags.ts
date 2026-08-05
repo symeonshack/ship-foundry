@@ -45,6 +45,8 @@ export const FLAGS = {
   MISSION_ESTABLISHED: 'mission.established',
   /** the whole mission is complete — greenhouse harvest included (Phase 40) */
   MISSION_COMPLETE: 'mission.complete',
+  /** total-wipe game over — the base was lost entirely (Phase 45) */
+  GAME_OVER: 'mission.gameOver',
   SIGNAL_SCANNED: 'progress.signalScanned',
   ENCOUNTER_STARTED: 'encounter.started',
   ENCOUNTER_SOLVED: 'encounter.solved',

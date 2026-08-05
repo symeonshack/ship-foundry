@@ -27,21 +27,47 @@ function warningLead(store: GameStore, baseSec: number): number {
   return store.state.base.satellites.includes('weather') ? baseSec * BALANCE.landingZone.hazards.weatherLeadMultiplier : baseSec;
 }
 
+/** unsheltered drones out in the open when a hazard strikes may be lost (Phase 60);
+ * returns the uids destroyed so they can be removed + announced */
+function struckDrones(store: GameStore): string[] {
+  const chance = BALANCE.landingZone.hazards.droneStrikeLossChance;
+  const lost: string[] = [];
+  for (const d of store.state.base.drones) {
+    if (d.status === 'sheltered') continue;
+    if (Math.random() < chance) lost.push(d.uid);
+  }
+  if (lost.length > 0) {
+    store.state.base.drones = store.state.base.drones.filter((d) => !lost.includes(d.uid));
+  }
+  return lost;
+}
+
 function hasActiveShield(structures: readonly StructureInstance[], defId: StructureId): boolean {
   return structures.some((s) => s.status === 'active' && s.defId === defId);
 }
 
-/** apply a hazard's damage fraction to every active structure; returns the
- * count hit and any that were destroyed (skipped entirely when shielded) */
+/** apply a hazard's damage fraction to every structure that's standing or
+ * still going up (the latter takes it harder — Phase 50); returns the count
+ * hit and any destroyed (skipped entirely when the base is shielded) */
 function strike(structures: StructureInstance[], fraction: number, shielded: boolean): { hits: number; destroyed: Damaged[] } {
   if (shielded) return { hits: 0, destroyed: [] };
   let hits = 0;
   const destroyed: Damaged[] = [];
+  const uncMult = BALANCE.landingZone.hazards.underConstructionMultiplier;
   for (const s of structures) {
-    if (s.status !== 'active') continue;
-    hits += 1;
-    if (applyDamage(s, STRUCTURES[s.defId].maxHp * fraction) === 'destroyed') {
-      destroyed.push({ uid: s.uid, defId: s.defId });
+    if (s.status === 'active') {
+      hits += 1;
+      if (applyDamage(s, STRUCTURES[s.defId].maxHp * fraction) === 'destroyed') destroyed.push({ uid: s.uid, defId: s.defId });
+    } else if (s.status === 'building') {
+      // a construction site is more fragile — applyDamage ignores non-active
+      // structures, so knock its HP down directly and let 0 collapse it
+      hits += 1;
+      s.hp = Math.max(0, s.hp - STRUCTURES[s.defId].maxHp * fraction * uncMult);
+      if (s.hp <= 0) {
+        s.status = 'destroyed';
+        s.repairing = false;
+        destroyed.push({ uid: s.uid, defId: s.defId });
+      }
     }
   }
   return { hits, destroyed };
@@ -51,7 +77,7 @@ function strike(structures: StructureInstance[], fraction: number, shielded: boo
 
 export type FlareEvent =
   | { type: 'warning'; countdownSec: number }
-  | { type: 'strike'; hits: number; destroyed: Damaged[] }
+  | { type: 'strike'; hits: number; destroyed: Damaged[]; dronesLost: string[] }
   | null;
 
 export function tickFlare(store: GameStore, dt: number): FlareEvent {
@@ -69,16 +95,17 @@ export function tickFlare(store: GameStore, dt: number): FlareEvent {
   if (now < base.flareWarningUntil) return null;
 
   const { hits, destroyed } = strike(base.structures, cfg.damageFraction, hasActiveShield(base.structures, 'emShield'));
+  const dronesLost = struckDrones(store);
   base.flareWarningUntil = null;
   base.nextFlareAt = now + cfg.minInterval + Math.random() * (cfg.maxInterval - cfg.minInterval);
-  return { type: 'strike', hits, destroyed };
+  return { type: 'strike', hits, destroyed, dronesLost };
 }
 
 // ---- dust storm ----
 
 export type StormEvent =
   | { type: 'warning'; countdownSec: number }
-  | { type: 'begin'; hits: number; destroyed: Damaged[] }
+  | { type: 'begin'; hits: number; destroyed: Damaged[]; dronesLost: string[] }
   | { type: 'end' }
   | null;
 
@@ -105,9 +132,10 @@ export function tickStorm(store: GameStore, dt: number): StormEvent {
   if (base.stormWarningUntil !== null) {
     if (now < base.stormWarningUntil) return null;
     const { hits, destroyed } = strike(base.structures, cfg.damageFraction, hasActiveShield(base.structures, 'stormShield'));
+    const dronesLost = struckDrones(store);
     base.stormWarningUntil = null;
     base.stormActiveUntil = now + cfg.durationSec;
-    return { type: 'begin', hits, destroyed };
+    return { type: 'begin', hits, destroyed, dronesLost };
   }
 
   // idle → open the warning when the schedule comes due

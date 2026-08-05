@@ -57,10 +57,12 @@ describe('tickFlare', () => {
     expect(tickFlare(store, 0.1)).toBeNull();
   });
 
-  it('strikes every active structure once the countdown elapses, sparing non-active ones', () => {
+  it('strikes standing and under-construction structures (the latter harder), sparing rubble', () => {
+    const max = STRUCTURES.solarArray.maxHp;
+    const uncMult = BALANCE.landingZone.hazards.underConstructionMultiplier;
     const store = new GameStore(new EventBus(), createNewGame());
     const hit = active({ uid: 'hit1' });
-    const building = active({ uid: 'b2', status: 'building', buildProgress: 0.3 });
+    const building = active({ uid: 'b2', status: 'building', buildProgress: 0.3, hp: max });
     const rubble = active({ uid: 'r1', status: 'destroyed' });
     store.state.base.structures.push(hit, building, rubble);
 
@@ -71,9 +73,11 @@ describe('tickFlare', () => {
 
     expect(strike?.type).toBe('strike');
     if (strike?.type !== 'strike') throw new Error('expected a strike');
-    expect(strike.hits).toBe(1); // only the active one counts
-    expect(hit.hp).toBeCloseTo(STRUCTURES.solarArray.maxHp * (1 - cfg.damageFraction));
-    expect(building.hp).toBe(STRUCTURES.solarArray.maxHp); // untouched
+    expect(strike.hits).toBe(2); // active + under-construction; rubble is skipped
+    expect(hit.hp).toBeCloseTo(max * (1 - cfg.damageFraction));
+    // the construction site takes the amplified hit
+    expect(building.hp).toBeCloseTo(max * (1 - cfg.damageFraction * uncMult));
+    expect(building.hp).toBeLessThan(hit.hp);
     expect(store.state.base.flareWarningUntil).toBeNull(); // countdown clears
     expect(store.state.base.nextFlareAt).toBeGreaterThan(store.state.playSeconds); // rescheduled forward
   });

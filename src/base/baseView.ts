@@ -40,7 +40,7 @@ import {
   buildStructureRubble,
   mulberry32,
 } from '../scene/primitives';
-import { DRONES, DRONE_IDS, orderGather, orderMove, spawnDrone } from './drones';
+import { DRONES, DRONE_IDS, formationOffsets, orderGather, orderMove, shelterAll, spawnDrone } from './drones';
 import {
   STRUCTURES,
   STRUCTURE_IDS,
@@ -133,6 +133,8 @@ export class BaseView {
   private rallyMesh: THREE.Group | null = null;
   // idle-cycle cursor (Phase 22): the last idle drone Find jumped to
   private lastIdleUid: string | null = null;
+  // control groups (Phase 57): hotkey-recallable sets of drone uids (session-scoped)
+  private controlGroups = new Map<number, string[]>();
   private ray = new THREE.Raycaster();
   /** live-updating panel elements (construction %, HP bars) — rebuilt with the panel */
   private panelUpdaters: (() => void)[] = [];
@@ -341,6 +343,38 @@ export class BaseView {
     if (this.selection.replace([next.uid])) this.syncSelectionRings();
     this.hooks.centerOn(next.x, next.z);
     return true;
+  }
+
+  // ---- control groups (Phase 57) ----
+
+  /** assign the current selection to control group n (1-9) */
+  assignControlGroup(n: number): void {
+    const uids = [...this.selection.selected];
+    if (uids.length === 0) {
+      this.controlGroups.delete(n);
+      return;
+    }
+    this.controlGroups.set(n, uids);
+    toast(`Control group ${n} set (${uids.length})`, 'info');
+  }
+
+  /** select control group n and centre the camera on it */
+  recallControlGroup(n: number): void {
+    const group = this.controlGroups.get(n);
+    if (!group) return;
+    const live = new Set([...this.meshByUid.keys(), ...this.droneMeshByUid.keys()]);
+    const alive = group.filter((u) => live.has(u));
+    if (alive.length === 0) {
+      this.controlGroups.delete(n);
+      return;
+    }
+    if (this.selection.replace(alive)) this.syncSelectionRings();
+    const drones = this.ctx.store.state.base.drones.filter((d) => alive.includes(d.uid));
+    if (drones.length > 0) {
+      const cx = drones.reduce((a, d) => a + d.x, 0) / drones.length;
+      const cz = drones.reduce((a, d) => a + d.z, 0) / drones.length;
+      this.hooks.centerOn(cx, cz);
+    }
   }
 
   /** the "Find idle (N)" button in the Drones panel box */
@@ -648,7 +682,9 @@ export class BaseView {
         } else {
           const hit = raycaster.intersectObjects(this.terrain.group.children, false)[0];
           if (hit) {
-            for (const d of ordered) orderMove(d, hit.point.x, hit.point.z);
+            // spread a group across a small formation so they don't stack on one spot
+            const offsets = formationOffsets(ordered.length);
+            ordered.forEach((d, i) => orderMove(d, hit.point.x + offsets[i]!.dx, hit.point.z + offsets[i]!.dz));
             this.ctx.store.changed();
           }
         }
@@ -702,7 +738,9 @@ export class BaseView {
       `|d${drones.length}i${drones.filter((d) => d.status === 'idle').length}` +
       // satellites in orbit + whether a launch is running, so the array panel
       // flips buttons to "in orbit" / re-disables during a launch
-      `|sat${base.satellites.join('')}${base.launch ? 'L' : ''}`
+      `|sat${base.satellites.join('')}${base.launch ? 'L' : ''}` +
+      // a live hazard warning flips the Shelter button to its ⚠ alert state
+      `|w${base.flareWarningUntil !== null ? 'f' : ''}${base.stormWarningUntil !== null ? 's' : ''}`
     );
   }
 
@@ -797,6 +835,18 @@ export class BaseView {
       ctrl.appendChild(rallyBtn);
       if (rally) ctrl.appendChild(button('Clear rally', () => this.clearRally()));
       this.renderIdleControl(ctrl);
+      // garrison/shelter (Phase 44): tuck all drones into the nearest structure —
+      // sheltered drones ride out a hazard strike unharmed
+      if (store.state.base.drones.length > 0) {
+        const warning = store.state.base.flareWarningUntil !== null || store.state.base.stormWarningUntil !== null;
+        const shelterBtn = button(warning ? '⚠ Shelter drones' : 'Shelter drones', () => {
+          if (shelterAll(store) === 0) toast('Nowhere to shelter — build a structure first', 'warn');
+          else store.changed();
+        });
+        shelterBtn.title = 'Send every drone to shelter in the nearest structure. A hazard strike loses drones caught in the open.';
+        if (warning) shelterBtn.classList.add('active');
+        ctrl.appendChild(shelterBtn);
+      }
     }
 
     // dev-mode drone spawn: real production now rolls drones out of a finished

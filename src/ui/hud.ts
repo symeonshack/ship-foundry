@@ -221,6 +221,7 @@ export class Hud {
     });
     ctx.bus.on('gerty:line', ({ line }) => this.showGerty(line));
     ctx.bus.on('fragment:found', () => toast('Discovery logged', 'good'));
+    ctx.bus.on('game:over', () => this.openSaves(true));
     this.refresh();
   }
 
@@ -335,8 +336,14 @@ export class Hud {
     this.gertyTimer = window.setTimeout(() => this.gertyBox.classList.remove('visible'), line.duration * 1000);
   }
 
-  openSaves(): void {
+  openSaves(gameOver = false): void {
     const card = el('div', 'modal-card');
+    if (gameOver) {
+      const banner = el('h2', undefined, '☠ Total loss');
+      banner.style.color = 'var(--red)';
+      card.appendChild(banner);
+      card.appendChild(el('p', 'sub', 'The Landing Zone is gone — every structure in ruins and the crew out of food. Roll back to a checkpoint below, or wipe and start over.'));
+    }
     card.appendChild(el('h2', undefined, 'Saves & Checkpoints'));
     card.appendChild(
       el(

@@ -123,6 +123,11 @@ export class SurfaceScreen implements GameScreen {
       this.baseView?.findNextIdle();
     } else if (ev.code === 'Escape') {
       this.baseView?.cancelArming();
+    } else if (this.mode === 'command' && /^Digit[1-9]$/.test(ev.code)) {
+      // control groups (Phase 57): Ctrl+digit assigns the selection, digit recalls it
+      const n = Number(ev.code.slice(5));
+      if (ev.ctrlKey || ev.metaKey) this.baseView?.assignControlGroup(n);
+      else this.baseView?.recallControlGroup(n);
     }
     if (SurfaceScreen.PAN_CODES.has(ev.code)) {
       this.panKeys.add(ev.code);
