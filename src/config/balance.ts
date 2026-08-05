@@ -233,6 +233,44 @@ export const BALANCE = {
     mission: {
       oreHighQuota: 40,
     },
+    /** the food system (Phase 36-39). Food is a separate meter, fed by a chain:
+     * passive organic waste + regolith → (soil processor) growing medium →
+     * (greenhouse) planted crop → grows → harvest → food. Intermediates are
+     * base-state counters, not stock resources; irrigation & grow-lights draw
+     * on the refined-fuel stock (competing with refuelling). */
+    food: {
+      cap: 100,
+      startLevel: 60,
+      /** food consumed per second — always draining, so the base must feed itself */
+      drainPerSec: 0.05,
+      /** a running greenhouse eases the ambient life-support drain by this factor (oxygen) */
+      oxygenRelief: 0.4,
+      /** organic waste trickles up passively, capped */
+      wastePerSec: 0.06,
+      wasteCap: 24,
+      growingMediumCap: 40,
+      /** soil processor: consumes waste + regolith to make growing medium */
+      soil: {
+        wastePerMedium: 2,
+        regolithPerMedium: 2,
+        ratePerSec: 0.2,
+      },
+      /** greenhouse crop cycle */
+      crop: {
+        growSec: 70,
+        mediumPerPlant: 5,
+        /** irrigation drawn from refined-fuel stock at planting */
+        fuelPerPlant: 2,
+        foodPerHarvest: 28,
+        /** transparent-panel growth rate at night (grow-lights remove this penalty) */
+        nightFactor: 0.2,
+        /** grow-lights burn refined fuel per second while a crop grows */
+        growLightFuelPerSec: 0.03,
+        /** chance a harvest is lost to contamination when the greenhouse is
+         * damaged; a full-HP greenhouse is clean */
+        contaminationChanceWhenDamaged: 0.35,
+      },
+    },
   },
 
   /** The #terrain proof-of-concept range (dev harness screen, not a gameplay site). */

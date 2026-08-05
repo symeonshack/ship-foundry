@@ -16,6 +16,7 @@ import { manageHaulers, spawnDrone, tickDroneTask, tickFabricator } from './dron
 import { footprintAt } from './placement';
 import { tickFlare, tickStorm } from './hazards';
 import { tickLaunch } from './satellites';
+import { tickFood } from './food';
 
 /** notify (and re-render) at most this often for continuous numeric drift —
  * fuel drain, isotope burn — the top bar doesn't need 60fps precision, and
@@ -50,6 +51,7 @@ export class BaseSim {
   private isotopeNotifyTimer = 0;
   private flareNotifyTimer = 0;
   private stormNotifyTimer = 0;
+  private foodNotifyTimer = 0;
 
   constructor(private store: GameStore) {}
 
@@ -184,6 +186,31 @@ export class BaseSim {
     const launched = tickLaunch(this.store, dt);
     if (launched) {
       this.store.bus.emit('satellite:launched', { satId: launched });
+      transitions = true;
+    }
+
+    // food chain: harvests/contamination and the low-food crossing are real
+    // transitions; the meter's continuous drain is read live by the HUD gauge
+    const food = tickFood(this.store, dt);
+    if (food.harvested) {
+      this.store.bus.emit('food:harvest', {});
+      transitions = true;
+    }
+    if (food.contaminated) {
+      this.store.bus.emit('food:contaminated', {});
+      transitions = true;
+    }
+    if (food.lowCrossed === 'low') {
+      this.store.bus.emit('food:low', {});
+      transitions = true;
+    } else if (food.lowCrossed === 'ok') {
+      this.store.bus.emit('food:restored', {});
+      transitions = true;
+    }
+    // the food gauge ticks down continuously — throttle-notify like fuel
+    this.foodNotifyTimer += dt;
+    if (this.foodNotifyTimer >= CONTINUOUS_NOTIFY_INTERVAL) {
+      this.foodNotifyTimer = 0;
       transitions = true;
     }
 

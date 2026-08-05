@@ -12,7 +12,7 @@ import { BaseSim } from './base/baseSim';
 import { STRUCTURES } from './base/structures';
 import { DRONES, type DroneId } from './base/drones';
 import { SATELLITES, type SatelliteId } from './base/satellites';
-import { operationEstablished } from './base/mission';
+import { missionComplete, operationEstablished } from './base/mission';
 import { BALANCE } from './config/balance';
 import { autoRefuel } from './mining/hauling';
 import { ShipyardScreen } from './building/shipyard';
@@ -165,11 +165,22 @@ bus.on('mission:established', () => {
   pushCheckpoint(store.state, 'Operation established');
   saveGame(store.state);
 });
-// one-shot: the moment every currently-implemented objective is met
+bus.on('mission:complete', () => {
+  toast('Mission complete — the Landing Zone is fully established, fed, and self-sufficient', 'good');
+  pushCheckpoint(store.state, 'Mission complete');
+  saveGame(store.state);
+});
+bus.on('food:low', () => toast('Food running low — the greenhouse chain needs to keep up', 'warn'));
+bus.on('food:contaminated', () => toast('A harvest was lost to contamination — repair the greenhouse', 'bad'));
+// one-shot milestone checks: infrastructure first, then the full mission
 bus.on('state:changed', () => {
   if (!store.hasFlag(FLAGS.MISSION_ESTABLISHED) && operationEstablished(store)) {
     store.setFlag(FLAGS.MISSION_ESTABLISHED, true);
     bus.emit('mission:established', {});
+  }
+  if (!store.hasFlag(FLAGS.MISSION_COMPLETE) && missionComplete(store)) {
+    store.setFlag(FLAGS.MISSION_COMPLETE, true);
+    bus.emit('mission:complete', {});
   }
 });
 window.addEventListener('beforeunload', () => saveGame(store.state));
@@ -238,6 +249,12 @@ manager.start();
   const base = store.state.base as { satellites?: GameState['base']['satellites']; launch?: GameState['base']['launch'] };
   if (!Array.isArray(base.satellites)) base.satellites = [];
   if (base.launch === undefined) base.launch = null;
+}
+
+// saves from before the food system (Phase 36) existed
+{
+  const raw = store.state as { food?: GameState['food'] };
+  if (!raw.food) raw.food = { level: BALANCE.landingZone.food.startLevel, organicWaste: 0, growingMedium: 0, harvests: 0 };
 }
 
 // saves from before the orbit/ground split default to being aboard the ship

@@ -86,6 +86,11 @@ export interface StructureInstance {
   running?: boolean;
   /** fabricators only (Phase 17): FIFO drone-production queue */
   queue?: FabricationJob[];
+  /** greenhouses only (Phase 38): seconds into the current crop; undefined = fallow */
+  cropProgress?: number;
+  /** greenhouses only (Phase 39): grow-lights on (consistent growth, power/fuel cost)
+   * vs. transparent panels (free, day/night-dependent) */
+  growLights?: boolean;
 }
 
 export const STRUCTURES: Record<StructureId, StructureDef> = {

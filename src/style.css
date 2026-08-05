@@ -135,6 +135,18 @@ html, body {
 #fuel-fill { height: 100%; background: var(--amber); transition: width 0.3s; }
 #fuel-fill.low { background: var(--red); }
 
+#food-wrap { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--dim); }
+#food-bar {
+  width: 110px; height: 10px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  overflow: hidden;
+  background: rgba(0,0,0,0.4);
+}
+#food-fill { height: 100%; background: var(--green); transition: width 0.3s; }
+#food-fill.low { background: var(--amber); }
+#food-fill.critical { background: var(--red); }
+
 #location { color: var(--accent); font-size: 13px; letter-spacing: 0.06em; }
 #dev-badge {
   padding: 1px 8px;

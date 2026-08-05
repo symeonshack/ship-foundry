@@ -879,6 +879,50 @@ export class BaseView {
       });
     }
 
+    // food chain (Phase 36-39): shown once a soil processor or greenhouse stands
+    const foodStructures = store.state.base.structures.filter((s) => s.status === 'active' && (s.defId === 'soilProcessor' || s.defId === 'greenhouse'));
+    if (foodStructures.length > 0) {
+      const fcfg = BALANCE.landingZone.food;
+      const b = box('Food Chain');
+      const foodRow = el('div', 'sub', '');
+      const wasteRow = el('div', 'sub', '');
+      const medRow = el('div', 'sub', '');
+      b.append(foodRow, wasteRow, medRow);
+      this.panelUpdaters.push(() => {
+        const f = store.state.food;
+        foodRow.textContent = `Food ${f.level.toFixed(0)}/${fcfg.cap}`;
+        wasteRow.textContent = `Organic waste ${f.organicWaste.toFixed(1)}/${fcfg.wasteCap}`;
+        medRow.textContent = `Growing medium ${f.growingMedium.toFixed(1)}/${fcfg.growingMediumCap}`;
+      });
+      // per-greenhouse crop status + grow-lights toggle
+      for (const gh of store.state.base.structures.filter((s) => s.status === 'active' && s.defId === 'greenhouse')) {
+        const row = el('div', 'row');
+        row.appendChild(el('span', 'grow', 'Greenhouse'));
+        const status = el('span', 'sub', '');
+        row.appendChild(status);
+        b.appendChild(row);
+        const cropBar = bar(0, 'var(--green)');
+        b.appendChild(cropBar);
+        const toggle = button('', () => {
+          gh.growLights = !gh.growLights;
+          store.changed();
+        });
+        b.appendChild(toggle);
+        this.panelUpdaters.push(() => {
+          const inner = cropBar.firstElementChild as HTMLElement;
+          if (gh.cropProgress === undefined) {
+            status.textContent = 'fallow — needs medium + irrigation';
+            inner.style.width = '0%';
+          } else {
+            const frac = Math.min(1, gh.cropProgress / fcfg.crop.growSec);
+            status.textContent = frac >= 1 ? 'harvesting…' : `growing ${Math.round(frac * 100)}%`;
+            inner.style.width = `${Math.round(frac * 100)}%`;
+          }
+          toggle.textContent = gh.growLights ? 'Grow-lights: ON (burns fuel)' : 'Grow-lights: OFF (daylight only)';
+        });
+      }
+    }
+
     if (this.selection.selected.size > 0) {
       const structures = store.state.base.structures;
       const b = box(this.selection.selected.size > 1 ? `Selected ×${this.selection.selected.size}` : 'Selected');

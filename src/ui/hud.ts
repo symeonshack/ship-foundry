@@ -14,6 +14,8 @@ import { listCheckpoints, restoreCheckpoint, wipeAll } from '../save/persistence
 import { FLAGS } from '../core/flags';
 import { ITEM_NAMES } from '../structure/layout';
 import { pressureActive } from '../base/baseSim';
+import { foodStatus } from '../base/food';
+import { BALANCE } from '../config/balance';
 import { STRUCTURE_IDS, STRUCTURES } from '../base/structures';
 import { el } from './panels';
 import type { SpokenLine } from '../companion/gerty';
@@ -46,6 +48,8 @@ export class Hud {
   private cargoChips: HTMLElement;
   private fuelFill: HTMLElement;
   private fuelLabel: HTMLElement;
+  private foodFill: HTMLElement;
+  private foodLabel: HTMLElement;
   private location: HTMLElement;
   private navButtons = new Map<string, HTMLButtonElement>();
   private gertyBox: HTMLElement;
@@ -102,6 +106,20 @@ export class Hud {
     this.fuelLabel = el('span', undefined, '');
     fuelWrap.appendChild(this.fuelLabel);
     top.appendChild(fuelWrap);
+
+    const foodWrap = el('div');
+    foodWrap.id = 'food-wrap';
+    foodWrap.appendChild(el('span', undefined, 'FOOD'));
+    const foodBar = el('div');
+    foodBar.id = 'food-bar';
+    this.foodFill = el('div');
+    this.foodFill.id = 'food-fill';
+    foodBar.appendChild(this.foodFill);
+    foodWrap.appendChild(foodBar);
+    this.foodLabel = el('span', undefined, '');
+    foodWrap.appendChild(this.foodLabel);
+    foodWrap.title = 'Food is a separate meter that always drains. Feed the base with a greenhouse chain: soil processor → growing medium → greenhouse harvests.';
+    top.appendChild(foodWrap);
 
     this.drainBadge = el('span', undefined, 'LIFE-SUPPORT DRAIN');
     this.drainBadge.id = 'drain-badge';
@@ -242,6 +260,14 @@ export class Hud {
     this.fuelFill.style.width = `${Math.round(frac * 100)}%`;
     this.fuelFill.classList.toggle('low', frac < 0.25);
     this.fuelLabel.textContent = `${s.fuel.toFixed(0)}/${stats.fuelCap}`;
+
+    const foodCap = BALANCE.landingZone.food.cap;
+    const foodFrac = s.food.level / foodCap;
+    const foodState = foodStatus(s.food.level);
+    this.foodFill.style.width = `${Math.round(foodFrac * 100)}%`;
+    this.foodFill.classList.toggle('low', foodState !== 'ok');
+    this.foodFill.classList.toggle('critical', foodState === 'critical');
+    this.foodLabel.textContent = `${s.food.level.toFixed(0)}/${foodCap}`;
 
     const def = poiDef(s.currentPoi);
     this.location.textContent = `SITE • ${def.name.toUpperCase()}`;

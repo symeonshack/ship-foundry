@@ -49,8 +49,15 @@ export interface GameEvents {
   'mission:discovery': { poiId: string };
   /** a satellite reached orbit (Phase 31-34) */
   'satellite:launched': { satId: string };
-  /** the operation is established — every currently-implemented objective met (Phase 35) */
+  /** the operation is established — every infrastructure objective met (Phase 35) */
   'mission:established': Record<string, never>;
+  /** the full mission is complete — every objective incl. the greenhouse met (Phase 40) */
+  'mission:complete': Record<string, never>;
+  /** food system (Phase 36-39) */
+  'food:low': Record<string, never>;
+  'food:restored': Record<string, never>;
+  'food:harvest': Record<string, never>;
+  'food:contaminated': Record<string, never>;
 
   'refine:complete': { recipeId: string; output: RefinedResourceId };
   'build:placed': { partId: PartId };

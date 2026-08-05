@@ -120,6 +120,19 @@ export interface MissionState {
   oreHighBanked: number;
 }
 
+/** the food system (Phase 36-39): a separate depleting meter fed by a
+ * greenhouse chain, with its own intermediate stocks (not stock resources) */
+export interface FoodState {
+  /** the food meter, 0..cap — drains continuously, refilled by harvests */
+  level: number;
+  /** organic waste, a passive habitat byproduct → soil-processor input */
+  organicWaste: number;
+  /** growing medium, the soil-processor output → greenhouse planting input */
+  growingMedium: number;
+  /** total crops harvested (the mission's "one harvest" objective) */
+  harvests: number;
+}
+
 export interface GameState {
   version: 1;
   createdAt: number;
@@ -147,6 +160,8 @@ export interface GameState {
   base: BaseState;
   /** mission-arc progress (Phase 28/29) */
   mission: MissionState;
+  /** food system (Phase 36-39) */
+  food: FoodState;
 }
 
 export function createNewGame(): GameState {
@@ -202,6 +217,7 @@ export function createNewGame(): GameState {
       launch: null,
     },
     mission: { oreHighBanked: 0 },
+    food: { level: BALANCE.landingZone.food.startLevel, organicWaste: 0, growingMedium: 0, harvests: 0 },
   };
 }
 

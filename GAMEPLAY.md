@@ -115,6 +115,7 @@ At the Foundry/Landing Zone specifically, extraction feeds the base stockpile di
 - **Foundry** — the mid-arc milestone: requires a Storage Silo, Refinery, and Power Relay all standing first, and takes the longest of any early structure to build. The instant it completes, the **SHIPYARD** nav button unlocks for good (a toast announces it) — until then, the base is just a camp and ship-building/repair isn't reachable at all. It's also the prerequisite for the Nuclear Generator and Launch Pad.
 - **Fabricator** — build one (requires a Refinery and Power Relay) and a queue panel appears in the side panel: **+1/+5** buttons order Worker or Hauler drones, spending the cost immediately. Ordered units build in sequence with a live progress bar, same as the refinery queue. When one finishes, a **real drone rolls out** of the bay onto the site (a toast confirms it) — if a rally point is set it heads straight there, otherwise it waits by the Fabricator for orders.
 - **Launch Pad** — requires a Foundry, and hosts the **satellite array**. Build one and a **Satellite Array** box appears in the side panel with a **Launch** button per satellite (one launch at a time, with a live progress bar). Satellites go to orbit and stay there.
+- **Soil Processor** and **Greenhouse** — the food chain (see **Food** below). The soil processor turns organic waste + regolith into growing medium; the greenhouse grows that medium into harvests.
 
 **Drones** are real, movable units — box-select or click one, right-click a spot on the ground to send it there, and watch it walk over (sliding along other structures rather than clipping through them). **Dev mode** also adds "Spawn Worker/Hauler Drone" buttons in the side panel — a shortcut for testing that skips the Refinery→Power Relay→Fabricator build chain.
 
@@ -141,7 +142,15 @@ The two shields protect against *different* hazards and don't cover for each oth
 - **Weather Satellite** — hazard warnings arrive with real lead time instead of a last-second flash (the ☀/🌪 countdown badges get noticeably longer).
 - **Survey Satellite** — maps the system from above, revealing other points of interest on the star map without spending fuel to scout them.
 
-**The mission.** An **Operation** box in the side panel is your live objective checklist — self-sufficiency, a working Foundry, hazard hardening (both shields), no structures in ruins, the **high-grade ore quota** (a running total that never drops when you spend the ore), the anomalous find, and the full satellite array. The moment the quota is met, an **accidental discovery** fires: GERTY flags an anomalous signature in the ore that points to a location left off your charts (a log entry lands, and the site is revealed). When every currently-buildable objective is met, GERTY calls the **operation established** — the arc's milestone. One objective (a greenhouse harvest) is listed but greyed out until that system arrives.
+**Food.** A separate **FOOD** gauge in the top bar (next to fuel) always drains — the crew has to eat — so the base has to feed itself. Build the food chain:
+
+- **Organic waste** trickles up on its own (a habitat byproduct).
+- A **Soil Processor** combines that waste with **regolith** into **growing medium**.
+- A **Greenhouse** plants the medium (drawing a little **fuel** for irrigation), grows a crop, and on harvest tops up the food meter — then replants itself automatically as long as it stays supplied. The **Food Chain** box in the side panel shows the running stocks and each greenhouse's crop progress.
+
+Growth depends on light: transparent panels grow full-speed in daylight and slowly at night, or toggle **Grow-lights** on a greenhouse for round-the-clock growth at the cost of burning fuel. A running greenhouse also eases the food drain a little (oxygen). Greenhouses are as hazard-vulnerable as anything else — a **damaged** one risks losing a harvest to contamination, so keep it repaired.
+
+**The mission.** An **Operation** box in the side panel is your live objective checklist — self-sufficiency, a working Foundry, hazard hardening (both shields), no structures in ruins, the **high-grade ore quota** (a running total that never drops when you spend the ore), the anomalous find, the full satellite array, and a **greenhouse harvest**. The moment the quota is met, an **accidental discovery** fires: GERTY flags an anomalous signature in the ore that points to a location left off your charts (a log entry lands, and the site is revealed). When the infrastructure objectives are met, GERTY calls the **operation established**; when *every* objective is done — food included — that's **mission complete**, the arc's capstone.
 
 ## Refinery (at the Foundry)
 

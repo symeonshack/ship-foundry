@@ -41,8 +41,10 @@ export const FLAGS = {
   QUOTA_MET: 'mission.quotaMet',
   /** the Comms Relay satellite is in orbit — GERTY's orbital role is active (Phase 32) */
   COMMS_ONLINE: 'satellite.commsOnline',
-  /** every currently-implemented mission objective is met (Phase 35) */
+  /** every infrastructure mission objective is met (Phase 35) */
   MISSION_ESTABLISHED: 'mission.established',
+  /** the whole mission is complete — greenhouse harvest included (Phase 40) */
+  MISSION_COMPLETE: 'mission.complete',
   SIGNAL_SCANNED: 'progress.signalScanned',
   ENCOUNTER_STARTED: 'encounter.started',
   ENCOUNTER_SOLVED: 'encounter.solved',

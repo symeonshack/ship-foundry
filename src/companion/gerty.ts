@@ -96,6 +96,10 @@ export class Gerty {
     bus.on('mission:discovery', () => this.notify('mission-discovery'));
     bus.on('satellite:launched', ({ satId }) => this.notify(`satellite:${satId}`));
     bus.on('mission:established', () => this.notify('mission-established'));
+    bus.on('mission:complete', () => this.notify('mission-complete-full'));
+    bus.on('food:low', () => this.notify('food-low'));
+    bus.on('food:harvest', () => this.notify('food-harvest'));
+    bus.on('food:contaminated', () => this.notify('food-contaminated'));
     bus.on('encounter:turn', ({ actor }) => {
       if (actor === 'collaborator') this.notify('encounter-response');
     });

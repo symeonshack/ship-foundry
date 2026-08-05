@@ -38,14 +38,20 @@ export function missionObjectives(store: GameStore): Objective[] {
     { id: 'quota', label: `High-grade ore quota (${Math.min(banked, quota)}/${quota})`, done: s.mission.oreHighBanked >= quota, available: true },
     { id: 'discovery', label: 'Anomalous find located', done: store.hasFlag(FLAGS.QUOTA_MET), available: true },
     { id: 'satellites', label: `Satellite array (${s.base.satellites.length}/${SATELLITE_IDS.length})`, done: SATELLITE_IDS.every((id) => s.base.satellites.includes(id)), available: true },
-    { id: 'greenhouse', label: 'Greenhouse: one harvest (later)', done: false, available: false },
+    { id: 'greenhouse', label: 'Greenhouse: first harvest', done: s.food.harvests > 0, available: true },
   ];
 }
 
-/** true when every currently-implemented objective is met — the operation is
- * established (Phase 35). Objectives still waiting on unbuilt systems (marked
- * unavailable) are not required, so this can fire before the full mission-
- * complete criteria the plan lists are all buildable. */
+/** true when every infrastructure objective is met — the operation is
+ * established (Phase 35). This is the milestone before full mission complete:
+ * it deliberately excludes the greenhouse (food) objective, so hitting the
+ * satellite array still lands the "operation established" beat. */
 export function operationEstablished(store: GameStore): boolean {
+  return missionObjectives(store).every((o) => o.id === 'greenhouse' || !o.available || o.done);
+}
+
+/** true when the whole mission is complete — every objective met, greenhouse
+ * included (Phase 40). The capstone. */
+export function missionComplete(store: GameStore): boolean {
   return missionObjectives(store).every((o) => !o.available || o.done);
 }

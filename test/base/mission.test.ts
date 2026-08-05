@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { EventBus } from '../../src/core/events';
 import { createNewGame, GameStore } from '../../src/core/state';
-import { missionObjectives, oreHighQuota } from '../../src/base/mission';
+import { missionComplete, missionObjectives, operationEstablished, oreHighQuota } from '../../src/base/mission';
 import type { StructureInstance } from '../../src/base/structures';
 import { STRUCTURES, type StructureId } from '../../src/base/structures';
 import { FLAGS } from '../../src/core/flags';
@@ -69,14 +69,14 @@ describe('missionObjectives', () => {
     expect(byId(store, 'intact').done).toBe(false);
   });
 
-  it('the discovery objective tracks the QUOTA_MET flag; greenhouse stays unavailable', () => {
+  it('the discovery objective tracks the QUOTA_MET flag; all objectives are now available', () => {
     const store = new GameStore(new EventBus(), createNewGame());
     expect(byId(store, 'discovery').done).toBe(false);
     store.setFlag(FLAGS.QUOTA_MET, true);
     expect(byId(store, 'discovery').done).toBe(true);
-    // satellites is now a real (available) objective; greenhouse still awaits its system
+    // satellites and greenhouse are both real objectives now
     expect(byId(store, 'satellites').available).toBe(true);
-    expect(byId(store, 'greenhouse').available).toBe(false);
+    expect(byId(store, 'greenhouse').available).toBe(true);
   });
 
   it('the satellite objective flips done only when all three are in orbit', () => {
@@ -86,5 +86,32 @@ describe('missionObjectives', () => {
     expect(byId(store, 'satellites').done).toBe(false);
     store.state.base.satellites = ['comms', 'weather', 'survey'];
     expect(byId(store, 'satellites').done).toBe(true);
+  });
+
+  it('the greenhouse objective flips done on the first harvest', () => {
+    const store = new GameStore(new EventBus(), createNewGame());
+    expect(byId(store, 'greenhouse').done).toBe(false);
+    store.state.food.harvests = 1;
+    expect(byId(store, 'greenhouse').done).toBe(true);
+  });
+});
+
+describe('operationEstablished vs missionComplete', () => {
+  it('operation-established ignores the greenhouse; mission-complete requires it', () => {
+    const store = new GameStore(new EventBus(), createNewGame());
+    // satisfy every objective except the greenhouse
+    store.state.base.structures.push(
+      struct('solarArray'), struct('refineryBuilding'), struct('storageSilo'),
+      struct('foundry'), struct('emShield'), struct('stormShield'),
+    );
+    store.addStock('oreHigh', oreHighQuota());
+    store.setFlag(FLAGS.QUOTA_MET, true);
+    store.state.base.satellites = ['comms', 'weather', 'survey'];
+
+    expect(operationEstablished(store)).toBe(true); // greenhouse not required for the milestone
+    expect(missionComplete(store)).toBe(false); // ...but it is required for completion
+
+    store.state.food.harvests = 1;
+    expect(missionComplete(store)).toBe(true);
   });
 });
