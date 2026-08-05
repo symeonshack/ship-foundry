@@ -114,7 +114,7 @@ At the Foundry/Landing Zone specifically, extraction feeds the base stockpile di
 - **Nuclear Generator** — the fix for both of solar's problems: steady output day or night, dust-immune, for as long as the shared **isotope** stockpile holds out (mined from the pale-green Isotope Ore deposits). It burns isotope slowly and continuously while running; select it to see live status ("Running · isotope stock N" or, in red, "OFFLINE — out of isotopes"). Running dry doesn't damage it — it just goes dark (a toast announces it either way) and resumes automatically the moment you mine more isotope. Requires a Foundry to build.
 - **Foundry** — the mid-arc milestone: requires a Storage Silo, Refinery, and Power Relay all standing first, and takes the longest of any early structure to build. The instant it completes, the **SHIPYARD** nav button unlocks for good (a toast announces it) — until then, the base is just a camp and ship-building/repair isn't reachable at all. It's also the prerequisite for the Nuclear Generator and Launch Pad.
 - **Fabricator** — build one (requires a Refinery and Power Relay) and a queue panel appears in the side panel: **+1/+5** buttons order Worker or Hauler drones, spending the cost immediately. Ordered units build in sequence with a live progress bar, same as the refinery queue. When one finishes, a **real drone rolls out** of the bay onto the site (a toast confirms it) — if a rally point is set it heads straight there, otherwise it waits by the Fabricator for orders.
-- **Launch Pad** — requires a Foundry. For now it's just another structure — select it, watch it take damage, repair it — with no launch queue yet; that's where the satellite array will eventually start.
+- **Launch Pad** — requires a Foundry, and hosts the **satellite array**. Build one and a **Satellite Array** box appears in the side panel with a **Launch** button per satellite (one launch at a time, with a live progress bar). Satellites go to orbit and stay there.
 
 **Drones** are real, movable units — box-select or click one, right-click a spot on the ground to send it there, and watch it walk over (sliding along other structures rather than clipping through them). **Dev mode** also adds "Spawn Worker/Hauler Drone" buttons in the side panel — a shortcut for testing that skips the Refinery→Power Relay→Fabricator build chain.
 
@@ -135,7 +135,13 @@ At the Foundry/Landing Zone specifically, extraction feeds the base stockpile di
 
 The two shields protect against *different* hazards and don't cover for each other — an EM Shield is useless in a storm, and a storm can knock down your EM Shield (and vice-versa). Damaged structures are fixed with **Repair**; you don't have to rebuild from scratch.
 
-**The mission.** An **Operation** box in the side panel is your live objective checklist — self-sufficiency, a working Foundry, hazard hardening (both shields), no structures in ruins, and the **high-grade ore quota** (a running total that never drops when you spend the ore). The moment the quota is met, an **accidental discovery** fires: GERTY flags an anomalous signature in the ore that points to a location left off your charts (a log entry lands, and the site is revealed). A couple of objectives — the satellite array and a greenhouse harvest — are listed but greyed out until those systems arrive.
+**The satellite array.** Once the Launch Pad is up, launch three satellites (comms first — it's the backbone — then weather and survey in either order):
+
+- **Comms Relay** — puts GERTY in orbit as your assistant; the base keeps running while you're away.
+- **Weather Satellite** — hazard warnings arrive with real lead time instead of a last-second flash (the ☀/🌪 countdown badges get noticeably longer).
+- **Survey Satellite** — maps the system from above, revealing other points of interest on the star map without spending fuel to scout them.
+
+**The mission.** An **Operation** box in the side panel is your live objective checklist — self-sufficiency, a working Foundry, hazard hardening (both shields), no structures in ruins, the **high-grade ore quota** (a running total that never drops when you spend the ore), the anomalous find, and the full satellite array. The moment the quota is met, an **accidental discovery** fires: GERTY flags an anomalous signature in the ore that points to a location left off your charts (a log entry lands, and the site is revealed). When every currently-buildable objective is met, GERTY calls the **operation established** — the arc's milestone. One objective (a greenhouse harvest) is listed but greyed out until that system arrives.
 
 ## Refinery (at the Foundry)
 

@@ -40,6 +40,12 @@ export const LINES: LineDef[] = [
   { id: 'storm-miss', trigger: 'storm-miss', maxTimes: 99, cooldownSec: 20, mood: 'hint', text: 'Storm rolled through, shielded. Still no solar until it clears — but nothing broke. Good.' },
   { id: 'mission-discovery', trigger: 'mission-discovery', priority: 5, mood: 'hint', setFlags: [FLAGS.MISSION_DOUBT], text: 'The high-grade ore just told me something the briefing did not. There is a signature in it that traces to a location nobody handed us coordinates for. I have logged it. I would very much like to know who left it off the chart. [PLACEHOLDER — discovery beat]' },
 
+  // ---- satellite array (Phase 31-34) ----
+  { id: 'sat-comms', trigger: 'satellite:comms', priority: 4, mood: 'hint', text: 'Comms relay is in orbit — and so, functionally, am I now. I can watch the base while you are elsewhere and it will keep running. This is the version of me the briefing actually paid for.' },
+  { id: 'sat-weather', trigger: 'satellite:weather', priority: 4, mood: 'hint', text: 'Weather satellite online. I will see flares and storms coming with real lead time now, not a panicked half-minute. Build accordingly — the warnings just got useful.' },
+  { id: 'sat-survey', trigger: 'satellite:survey', priority: 4, mood: 'hint', text: 'Survey satellite mapping the system. Points of interest are populating the star chart without you spending a drop of fuel to find them. Some of them I do not recognise. Some of them I think I do.' },
+  { id: 'mission-established', trigger: 'mission-established', priority: 6, text: 'That is the operation established: self-sufficient, hardened against both skies, quota met, the array overhead, and a location on the chart that should not exist. The camp is a foothold now. Whatever the briefing was really for, we can finally go and find out. [PLACEHOLDER — arc close]' },
+
   // ---- flight ----
   { id: 'first-flight', trigger: 'flight', priority: 2, mood: 'hint', text: 'You have the stick. Drift is your own cargo arrangement talking back — counter it, and mind the throttle. I’ll handle everything except the flying.' },
   { id: 'hard-landing-1', trigger: 'hard-landing', maxTimes: 99, cooldownSec: 30, text: 'Logged as a “firm arrival.” The landing gear disagrees with my phrasing. Hold the retro-burn earlier next time.' },

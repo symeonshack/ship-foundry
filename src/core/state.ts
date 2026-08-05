@@ -9,6 +9,7 @@ import {
 import type { PartId } from '../building/partCatalog';
 import type { StructureInstance } from '../base/structures';
 import type { DroneInstance } from '../base/drones';
+import type { SatelliteId } from '../base/satellites';
 import { BALANCE } from '../config/balance';
 
 export type { StructureInstance, DroneInstance };
@@ -107,6 +108,10 @@ export interface BaseState {
   stormWarningUntil: number | null;
   /** playSeconds the active storm blows out at; null = no storm blowing */
   stormActiveUntil: number | null;
+  /** satellites launched to orbit from the Launch Pad (Phase 31-34) */
+  satellites: SatelliteId[];
+  /** the Launch Pad's in-progress launch; null = pad idle */
+  launch: { satId: SatelliteId; progressSec: number } | null;
 }
 
 /** mission-arc progress (Phase 28/29) */
@@ -193,6 +198,8 @@ export function createNewGame(): GameState {
       nextStormAt: BALANCE.landingZone.hazards.storm.firstAt,
       stormWarningUntil: null,
       stormActiveUntil: null,
+      satellites: [],
+      launch: null,
     },
     mission: { oreHighBanked: 0 },
   };

@@ -224,6 +224,9 @@ export const BALANCE = {
         /** fraction of maxHp each active structure loses at storm onset (unless a Storm Shield stands) */
         damageFraction: 0.18,
       },
+      /** a launched Weather Satellite (Phase 33) multiplies every hazard's
+       * warning lead time — crude last-second notice becomes real lead time */
+      weatherLeadMultiplier: 2.5,
     },
     /** mission arc (Phase 28/29): accumulate this much high-grade ore, banked
      * cumulatively, to hit the resource quota and trigger the discovery event */

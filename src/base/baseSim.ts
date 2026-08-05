@@ -15,6 +15,7 @@ import { isGeneratorRunning, tickNuclear, tickSolar } from './power';
 import { manageHaulers, spawnDrone, tickDroneTask, tickFabricator } from './drones';
 import { footprintAt } from './placement';
 import { tickFlare, tickStorm } from './hazards';
+import { tickLaunch } from './satellites';
 
 /** notify (and re-render) at most this often for continuous numeric drift —
  * fuel drain, isotope burn — the top bar doesn't need 60fps precision, and
@@ -175,6 +176,14 @@ export class BaseSim {
       const anomaly = this.store.poi('anomaly');
       if (anomaly.scanTier < 1) anomaly.scanTier = 1; // a location the find points to, now pre-scanned
       this.store.bus.emit('mission:discovery', { poiId: 'anomaly' });
+      transitions = true;
+    }
+
+    // satellite launch from the pad: only the arrival is a real transition
+    // (the progress bar is read live by the panel, like the Fabricator queue)
+    const launched = tickLaunch(this.store, dt);
+    if (launched) {
+      this.store.bus.emit('satellite:launched', { satId: launched });
       transitions = true;
     }
 

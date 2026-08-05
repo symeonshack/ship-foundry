@@ -94,6 +94,8 @@ export class Gerty {
     bus.on('storm:warning', () => this.notify('storm-warning'));
     bus.on('storm:begin', ({ hits }) => this.notify(hits > 0 ? 'storm-strike' : 'storm-miss'));
     bus.on('mission:discovery', () => this.notify('mission-discovery'));
+    bus.on('satellite:launched', ({ satId }) => this.notify(`satellite:${satId}`));
+    bus.on('mission:established', () => this.notify('mission-established'));
     bus.on('encounter:turn', ({ actor }) => {
       if (actor === 'collaborator') this.notify('encounter-response');
     });

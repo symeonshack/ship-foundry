@@ -60,6 +60,7 @@ import { startRepair } from './baseSim';
 import { canClean, hasPowerGrid, isGeneratorRunning, netPower, solarFactor } from './power';
 import { stormActive } from './hazards';
 import { missionObjectives } from './mission';
+import { SATELLITES, SATELLITE_IDS, canLaunch, queueLaunch } from './satellites';
 import { FLAGS } from '../core/flags';
 import { canPlace, footprintAt } from './placement';
 import { SelectionController, uidsInRect, type Px } from './selection';
@@ -692,12 +693,16 @@ export class BaseView {
       .join('');
     const rally = this.ctx.store.state.base.rallyPoint;
     const drones = this.ctx.store.state.base.drones;
+    const base = this.ctx.store.state.base;
     return (
       `${this.selection.sig()}|${this.armed ?? ''}|${this.rallyArming ? 'R' : ''}|${rally ? 'r' : ''}` +
-      `|${afford}|${statuses}#${this.ctx.store.state.base.structures.length}` +
+      `|${afford}|${statuses}#${base.structures.length}` +
       // drone count so the rally controls appear/disappear with the roster,
       // and idle count so the "Find idle (N)" label + disabled state track it
-      `|d${drones.length}i${drones.filter((d) => d.status === 'idle').length}`
+      `|d${drones.length}i${drones.filter((d) => d.status === 'idle').length}` +
+      // satellites in orbit + whether a launch is running, so the array panel
+      // flips buttons to "in orbit" / re-disables during a launch
+      `|sat${base.satellites.join('')}${base.launch ? 'L' : ''}`
     );
   }
 
@@ -826,6 +831,52 @@ export class BaseView {
         const live = renderFabricatorPanel(this.ctx, inst);
         this.panelUpdaters.push(() => live.update());
       }
+    }
+
+    // launch pad: the satellite array queue (Phase 31-34) — one launch at a time
+    if (store.state.base.structures.some((s) => s.status === 'active' && s.defId === 'launchPad')) {
+      const b = box('Satellite Array');
+      for (const id of SATELLITE_IDS) {
+        const def = SATELLITES[id];
+        const row = el('div', 'row');
+        const name = el('span', 'grow', def.name);
+        name.style.fontSize = '12px';
+        row.appendChild(name);
+        if (store.state.base.satellites.includes(id)) {
+          const tag = el('span', 'sub', 'in orbit ✓');
+          tag.style.color = 'var(--green)';
+          row.appendChild(tag);
+        } else {
+          const check = canLaunch(store, id);
+          const affordable = store.canAfford(def.cost);
+          const btn = button('Launch', () => {
+            if (!queueLaunch(store, id)) toast(canLaunch(store, id).reason ?? 'Cannot launch now', 'warn');
+          });
+          btn.title = `${def.desc}\nCost: ${costToString(def.cost)} · launch ${def.launchTimeSec}s`;
+          if (!check.ok) btn.title += `\n⚠ ${check.reason}`;
+          else if (!affordable) btn.title += '\n(not enough resources)';
+          if (!check.ok || !affordable || !this.hooks.isCommand()) btn.disabled = true;
+          row.appendChild(btn);
+        }
+        b.appendChild(row);
+      }
+      const progLabel = el('div', 'sub', '');
+      b.appendChild(progLabel);
+      const progBar = bar(0, 'var(--accent)');
+      b.appendChild(progBar);
+      this.panelUpdaters.push(() => {
+        const l = store.state.base.launch;
+        if (l) {
+          const def = SATELLITES[l.satId];
+          progLabel.textContent = `Launching ${def.name}…`;
+          (progBar.firstElementChild as HTMLElement).style.width = `${Math.round(Math.min(1, l.progressSec / def.launchTimeSec) * 100)}%`;
+          progLabel.style.display = '';
+          progBar.style.display = '';
+        } else {
+          progLabel.style.display = 'none';
+          progBar.style.display = 'none';
+        }
+      });
     }
 
     if (this.selection.selected.size > 0) {

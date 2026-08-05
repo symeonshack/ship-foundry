@@ -39,6 +39,10 @@ export const FLAGS = {
   /** Landing Zone mission: the high-grade ore quota has been met (Phase 28/29),
    * firing the one-time accidental-discovery event that reveals a new site */
   QUOTA_MET: 'mission.quotaMet',
+  /** the Comms Relay satellite is in orbit — GERTY's orbital role is active (Phase 32) */
+  COMMS_ONLINE: 'satellite.commsOnline',
+  /** every currently-implemented mission objective is met (Phase 35) */
+  MISSION_ESTABLISHED: 'mission.established',
   SIGNAL_SCANNED: 'progress.signalScanned',
   ENCOUNTER_STARTED: 'encounter.started',
   ENCOUNTER_SOLVED: 'encounter.solved',

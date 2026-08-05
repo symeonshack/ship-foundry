@@ -47,6 +47,10 @@ export interface GameEvents {
   'storm:end': Record<string, never>;
   /** mission arc (Phase 29): high-grade ore quota crossed → a location revealed */
   'mission:discovery': { poiId: string };
+  /** a satellite reached orbit (Phase 31-34) */
+  'satellite:launched': { satId: string };
+  /** the operation is established — every currently-implemented objective met (Phase 35) */
+  'mission:established': Record<string, never>;
 
   'refine:complete': { recipeId: string; output: RefinedResourceId };
   'build:placed': { partId: PartId };

@@ -69,12 +69,22 @@ describe('missionObjectives', () => {
     expect(byId(store, 'intact').done).toBe(false);
   });
 
-  it('the discovery objective tracks the QUOTA_MET flag, and future systems read unavailable', () => {
+  it('the discovery objective tracks the QUOTA_MET flag; greenhouse stays unavailable', () => {
     const store = new GameStore(new EventBus(), createNewGame());
     expect(byId(store, 'discovery').done).toBe(false);
     store.setFlag(FLAGS.QUOTA_MET, true);
     expect(byId(store, 'discovery').done).toBe(true);
-    expect(byId(store, 'satellites').available).toBe(false);
+    // satellites is now a real (available) objective; greenhouse still awaits its system
+    expect(byId(store, 'satellites').available).toBe(true);
     expect(byId(store, 'greenhouse').available).toBe(false);
+  });
+
+  it('the satellite objective flips done only when all three are in orbit', () => {
+    const store = new GameStore(new EventBus(), createNewGame());
+    expect(byId(store, 'satellites').done).toBe(false);
+    store.state.base.satellites = ['comms', 'weather'];
+    expect(byId(store, 'satellites').done).toBe(false);
+    store.state.base.satellites = ['comms', 'weather', 'survey'];
+    expect(byId(store, 'satellites').done).toBe(true);
   });
 });

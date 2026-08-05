@@ -11,6 +11,8 @@ import { Refinery } from './mining/refinery';
 import { BaseSim } from './base/baseSim';
 import { STRUCTURES } from './base/structures';
 import { DRONES, type DroneId } from './base/drones';
+import { SATELLITES, type SatelliteId } from './base/satellites';
+import { operationEstablished } from './base/mission';
 import { BALANCE } from './config/balance';
 import { autoRefuel } from './mining/hauling';
 import { ShipyardScreen } from './building/shipyard';
@@ -145,6 +147,31 @@ bus.on('mission:discovery', () => {
   pushCheckpoint(store.state, 'Anomaly located');
   saveGame(store.state);
 });
+bus.on('satellite:launched', ({ satId }) => {
+  toast(`${SATELLITES[satId as SatelliteId].name} in orbit`, 'good');
+  if (satId === 'comms') store.setFlag(FLAGS.COMMS_ONLINE, true); // GERTY's orbital role goes live
+  if (satId === 'survey') {
+    // survey maps the system from above — pre-scan every not-yet-scanned site
+    for (const id of POI_IDS) {
+      const p = store.poi(id);
+      if (p.scanTier < 1) p.scanTier = 1;
+    }
+  }
+  store.changed();
+  saveGame(store.state);
+});
+bus.on('mission:established', () => {
+  toast('Operation established — the Landing Zone is self-running, hardened, and surveyed', 'good');
+  pushCheckpoint(store.state, 'Operation established');
+  saveGame(store.state);
+});
+// one-shot: the moment every currently-implemented objective is met
+bus.on('state:changed', () => {
+  if (!store.hasFlag(FLAGS.MISSION_ESTABLISHED) && operationEstablished(store)) {
+    store.setFlag(FLAGS.MISSION_ESTABLISHED, true);
+    bus.emit('mission:established', {});
+  }
+});
 window.addEventListener('beforeunload', () => saveGame(store.state));
 
 // rollback checkpoints at the moments worth retrying from
@@ -176,6 +203,7 @@ manager.start();
       structures: [], drones: [], rallyPoint: null,
       nextFlareAt: BALANCE.landingZone.hazards.flare.firstAt, flareWarningUntil: null,
       nextStormAt: BALANCE.landingZone.hazards.storm.firstAt, stormWarningUntil: null, stormActiveUntil: null,
+      satellites: [], launch: null,
     };
   }
 }
@@ -203,6 +231,13 @@ manager.start();
 {
   const raw = store.state as { mission?: GameState['mission'] };
   if (!raw.mission) raw.mission = { oreHighBanked: 0 };
+}
+
+// saves from before the satellite array (Phase 31) existed
+{
+  const base = store.state.base as { satellites?: GameState['base']['satellites']; launch?: GameState['base']['launch'] };
+  if (!Array.isArray(base.satellites)) base.satellites = [];
+  if (base.launch === undefined) base.launch = null;
 }
 
 // saves from before the orbit/ground split default to being aboard the ship

@@ -22,6 +22,11 @@ import { STRUCTURES, applyDamage, type StructureId, type StructureInstance } fro
 
 type Damaged = { uid: string; defId: string };
 
+/** warning lead time for a hazard, stretched once a Weather Satellite is up (Phase 33) */
+function warningLead(store: GameStore, baseSec: number): number {
+  return store.state.base.satellites.includes('weather') ? baseSec * BALANCE.landingZone.hazards.weatherLeadMultiplier : baseSec;
+}
+
 function hasActiveShield(structures: readonly StructureInstance[], defId: StructureId): boolean {
   return structures.some((s) => s.status === 'active' && s.defId === defId);
 }
@@ -57,8 +62,9 @@ export function tickFlare(store: GameStore, dt: number): FlareEvent {
 
   if (base.flareWarningUntil === null) {
     if (now < base.nextFlareAt) return null;
-    base.flareWarningUntil = now + cfg.warningSec;
-    return { type: 'warning', countdownSec: cfg.warningSec };
+    const lead = warningLead(store, cfg.warningSec);
+    base.flareWarningUntil = now + lead;
+    return { type: 'warning', countdownSec: lead };
   }
   if (now < base.flareWarningUntil) return null;
 
@@ -106,6 +112,7 @@ export function tickStorm(store: GameStore, dt: number): StormEvent {
 
   // idle → open the warning when the schedule comes due
   if (now < base.nextStormAt) return null;
-  base.stormWarningUntil = now + cfg.warningSec;
-  return { type: 'warning', countdownSec: cfg.warningSec };
+  const lead = warningLead(store, cfg.warningSec);
+  base.stormWarningUntil = now + lead;
+  return { type: 'warning', countdownSec: lead };
 }

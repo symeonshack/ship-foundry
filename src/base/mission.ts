@@ -10,6 +10,7 @@ import { BALANCE } from '../config/balance';
 import { FLAGS } from '../core/flags';
 import type { GameStore } from '../core/state';
 import { pressureActive } from './baseSim';
+import { SATELLITE_IDS } from './satellites';
 
 export interface Objective {
   id: string;
@@ -36,7 +37,15 @@ export function missionObjectives(store: GameStore): Objective[] {
     { id: 'intact', label: 'No structures in ruins', done: !structures.some((x) => x.status === 'destroyed'), available: true },
     { id: 'quota', label: `High-grade ore quota (${Math.min(banked, quota)}/${quota})`, done: s.mission.oreHighBanked >= quota, available: true },
     { id: 'discovery', label: 'Anomalous find located', done: store.hasFlag(FLAGS.QUOTA_MET), available: true },
-    { id: 'satellites', label: 'Comms · weather · survey satellites (later)', done: false, available: false },
+    { id: 'satellites', label: `Satellite array (${s.base.satellites.length}/${SATELLITE_IDS.length})`, done: SATELLITE_IDS.every((id) => s.base.satellites.includes(id)), available: true },
     { id: 'greenhouse', label: 'Greenhouse: one harvest (later)', done: false, available: false },
   ];
+}
+
+/** true when every currently-implemented objective is met — the operation is
+ * established (Phase 35). Objectives still waiting on unbuilt systems (marked
+ * unavailable) are not required, so this can fire before the full mission-
+ * complete criteria the plan lists are all buildable. */
+export function operationEstablished(store: GameStore): boolean {
+  return missionObjectives(store).every((o) => !o.available || o.done);
 }
