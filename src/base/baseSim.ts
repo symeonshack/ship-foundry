@@ -14,7 +14,7 @@ import { STRUCTURES, canRepair, repairCost, tickConstruction, tickRepair, type S
 import { isGeneratorRunning, tickNuclear, tickSolar } from './power';
 import { manageHaulers, spawnDrone, tickDroneTask, tickFabricator } from './drones';
 import { footprintAt } from './placement';
-import { tickFlare } from './hazards';
+import { tickFlare, tickStorm } from './hazards';
 
 /** notify (and re-render) at most this often for continuous numeric drift —
  * fuel drain, isotope burn — the top bar doesn't need 60fps precision, and
@@ -48,6 +48,7 @@ export class BaseSim {
   private drainNotifyTimer = 0;
   private isotopeNotifyTimer = 0;
   private flareNotifyTimer = 0;
+  private stormNotifyTimer = 0;
 
   constructor(private store: GameStore) {}
 
@@ -143,6 +144,38 @@ export class BaseSim {
       }
     } else {
       this.flareNotifyTimer = 0;
+    }
+
+    // dust storm: same warning → hit → (blows for a while) → all-clear rhythm
+    const storm = tickStorm(this.store, dt);
+    if (storm?.type === 'warning') {
+      this.store.bus.emit('storm:warning', { countdownSec: storm.countdownSec });
+      transitions = true;
+    } else if (storm?.type === 'begin') {
+      for (const d of storm.destroyed) this.store.bus.emit('structure:destroyed', d);
+      this.store.bus.emit('storm:begin', { hits: storm.hits });
+      transitions = true;
+    } else if (storm?.type === 'end') {
+      this.store.bus.emit('storm:end', {});
+      transitions = true;
+    }
+    if (this.store.state.base.stormWarningUntil !== null || this.store.state.base.stormActiveUntil !== null) {
+      this.stormNotifyTimer += dt;
+      if (this.stormNotifyTimer >= CONTINUOUS_NOTIFY_INTERVAL) {
+        this.stormNotifyTimer = 0;
+        transitions = true;
+      }
+    } else {
+      this.stormNotifyTimer = 0;
+    }
+
+    // mission quota → the one-time accidental discovery (Phase 29)
+    if (!this.store.hasFlag(FLAGS.QUOTA_MET) && this.store.state.mission.oreHighBanked >= BALANCE.landingZone.mission.oreHighQuota) {
+      this.store.setFlag(FLAGS.QUOTA_MET, true);
+      const anomaly = this.store.poi('anomaly');
+      if (anomaly.scanTier < 1) anomaly.scanTier = 1; // a location the find points to, now pre-scanned
+      this.store.bus.emit('mission:discovery', { poiId: 'anomaly' });
+      transitions = true;
     }
 
     // ambient pressure: drains fuel until the base is minimally self-sufficient

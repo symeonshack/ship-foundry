@@ -195,9 +195,10 @@ export const BALANCE = {
        * batches several worker-loads per trip to base */
       haulerCarry: 8,
     },
-    /** environmental hazard escalation (Phase 25) — the plan calls for the
-     * first flare to be guaranteed early so every player learns the hardening
-     * lesson firsthand; later ones recur at random intervals */
+    /** environmental hazard escalation (Phase 25/26) — the plan calls for the
+     * first flare AND the first storm to be guaranteed early so every player
+     * learns the (different) hardening lessons firsthand; later ones recur at
+     * random intervals. Each hazard is negated by its own shield (Phase 27). */
     hazards: {
       flare: {
         /** playSeconds before the first, guaranteed flare */
@@ -208,9 +209,26 @@ export const BALANCE = {
         /** lead time between the warning and the strike — no satellite yet
          * for a longer lead time (the plan's "tiered warning") */
         warningSec: 25,
-        /** fraction of maxHp each active structure loses in one strike */
+        /** fraction of maxHp each active structure loses in one strike (unless an EM Shield stands) */
         damageFraction: 0.22,
       },
+      storm: {
+        /** first storm lands after the flare, staggered so the lessons don't collide */
+        firstAt: 330,
+        minInterval: 300,
+        maxInterval: 480,
+        /** storms give a little more warning than a flash flare */
+        warningSec: 30,
+        /** how long the dust blows once it hits: solar is dead and visibility drops */
+        durationSec: 45,
+        /** fraction of maxHp each active structure loses at storm onset (unless a Storm Shield stands) */
+        damageFraction: 0.18,
+      },
+    },
+    /** mission arc (Phase 28/29): accumulate this much high-grade ore, banked
+     * cumulatively, to hit the resource quota and trigger the discovery event */
+    mission: {
+      oreHighQuota: 40,
     },
   },
 

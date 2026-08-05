@@ -33,6 +33,13 @@ export const FRAGMENTS: Record<string, FragmentDef> = {
     source: 'Surface expedition',
     topicId: 'site-null',
   },
+  'anomaly-discovery': {
+    key: 'anomaly-discovery',
+    title: 'Cross-Reference: An Unlisted Return',
+    body: 'The high-grade ore assay carried a trace that has no business in local geology — the same iterated, machine-patient signature flagged elsewhere in the system. GERTY has back-plotted it to a location that is not on any chart we were issued. “Not a hazard,” it says. “Just somewhere the briefing forgot to mention.” [PLACEHOLDER — ties to the seed-AI discovery beat]',
+    source: 'Refinery assay · GERTY cross-reference',
+    topicId: 'site-null',
+  },
   'signal-scan': {
     key: 'signal-scan',
     title: 'Signal Analysis: The Relay',

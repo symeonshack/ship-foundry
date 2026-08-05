@@ -57,6 +57,7 @@ export class Hud {
   private devBadge: HTMLElement;
   private drainBadge: HTMLElement;
   private flareBadge: HTMLElement;
+  private stormBadge: HTMLElement;
   private activeScreen: ScreenId = 'interior';
 
   constructor(private ctx: Ctx) {
@@ -110,9 +111,15 @@ export class Hud {
 
     this.flareBadge = el('span');
     this.flareBadge.id = 'flare-badge';
-    this.flareBadge.title = 'Solar flare inbound — unhardened structures at the Landing Zone will take damage on impact.';
+    this.flareBadge.title = 'Solar flare inbound — unhardened structures at the Landing Zone will take damage on impact. Build an EM Shield to negate it.';
     this.flareBadge.style.display = 'none';
     top.appendChild(this.flareBadge);
+
+    this.stormBadge = el('span');
+    this.stormBadge.id = 'storm-badge';
+    this.stormBadge.title = 'Dust storm — damages unhardened structures on arrival and blacks out solar while it blows. Build a Storm Shield to negate the damage.';
+    this.stormBadge.style.display = 'none';
+    top.appendChild(this.stormBadge);
 
     this.location = el('span');
     this.location.id = 'location';
@@ -247,6 +254,16 @@ export class Hud {
       this.flareBadge.style.display = '';
     } else {
       this.flareBadge.style.display = 'none';
+    }
+    if (s.base.stormWarningUntil !== null) {
+      const remaining = Math.max(0, Math.ceil(s.base.stormWarningUntil - s.playSeconds));
+      this.stormBadge.textContent = `🌪 STORM T-${remaining}s`;
+      this.stormBadge.style.display = '';
+    } else if (s.base.stormActiveUntil !== null && s.playSeconds < s.base.stormActiveUntil) {
+      this.stormBadge.textContent = '🌪 DUST STORM';
+      this.stormBadge.style.display = '';
+    } else {
+      this.stormBadge.style.display = 'none';
     }
 
     const atHome = s.currentPoi === 'foundry';

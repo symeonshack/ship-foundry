@@ -101,6 +101,18 @@ export interface BaseState {
   nextFlareAt: number;
   /** playSeconds timestamp the current flare warning resolves at; null = no warning active */
   flareWarningUntil: number | null;
+  /** dust storm hazard (Phase 26): next scheduled storm */
+  nextStormAt: number;
+  /** playSeconds the storm warning resolves at (storm hits); null = no warning */
+  stormWarningUntil: number | null;
+  /** playSeconds the active storm blows out at; null = no storm blowing */
+  stormActiveUntil: number | null;
+}
+
+/** mission-arc progress (Phase 28/29) */
+export interface MissionState {
+  /** cumulative high-grade ore banked toward the resource quota */
+  oreHighBanked: number;
 }
 
 export interface GameState {
@@ -128,6 +140,8 @@ export interface GameState {
   structure: StructureState;
   /** Landing Zone's persistent home-base simulation state */
   base: BaseState;
+  /** mission-arc progress (Phase 28/29) */
+  mission: MissionState;
 }
 
 export function createNewGame(): GameState {
@@ -176,7 +190,11 @@ export function createNewGame(): GameState {
       rallyPoint: null,
       nextFlareAt: BALANCE.landingZone.hazards.flare.firstAt,
       flareWarningUntil: null,
+      nextStormAt: BALANCE.landingZone.hazards.storm.firstAt,
+      stormWarningUntil: null,
+      stormActiveUntil: null,
     },
+    mission: { oreHighBanked: 0 },
   };
 }
 
@@ -199,6 +217,10 @@ export class GameStore {
 
   addStock(id: ResourceId, n: number): void {
     this.state.stock[id] = Math.max(0, (this.state.stock[id] ?? 0) + n);
+    // high-grade ore banked here counts toward the mission quota cumulatively,
+    // so spending it later never walks the objective back (Phase 28). Mining
+    // is the only path that adds oreHigh, so this is a clean choke point.
+    if (id === 'oreHigh' && n > 0) this.state.mission.oreHighBanked += n;
     this.changed();
   }
 

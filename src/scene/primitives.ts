@@ -745,6 +745,54 @@ export function buildLaunchPadMesh(w: number, d: number, color: number): THREE.G
   return g;
 }
 
+/** EM Shield — a flare deflector: a ringed emitter mast crowned with a faint
+ * energy dome (Phase 27). */
+export function buildEmShieldMesh(w: number, d: number, color: number): THREE.Group {
+  const g = new THREE.Group();
+  const steel = mat(0x8a949c, { metal: 0.6, rough: 0.4 });
+  g.add(slab(w, d));
+  // emitter base + mast
+  g.add(at(cyl(Math.min(w, d) * 0.28, Math.min(w, d) * 0.32, 0.6, mat(color, { flat: true, metal: 0.5, rough: 0.5 }), 12), 0, 0.55, 0));
+  g.add(at(cyl(0.09, 0.11, 1.5, steel, 8), 0, 1.3, 0));
+  // stacked emitter rings up the mast
+  for (const y of [0.95, 1.4, 1.85]) {
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.34, 0.03, 8, 24), mat(C.accent, { emissive: C.accent, emissiveIntensity: 0.7 }));
+    ring.rotation.x = Math.PI / 2;
+    ring.position.set(0, y, 0);
+    g.add(ring);
+  }
+  // faint protective dome
+  const dome = new THREE.Mesh(
+    new THREE.SphereGeometry(Math.max(w, d) * 0.62, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2),
+    mat(C.accent, { emissive: C.accent, emissiveIntensity: 0.25, transparent: true, opacity: 0.14, rough: 0.2 }),
+  );
+  dome.position.y = 0.25;
+  g.add(dome);
+  g.add(at(sph(0.1, mat(C.accent, { emissive: C.accent, emissiveIntensity: 1 })), 0, 2.15, 0));
+  return g;
+}
+
+/** Storm Shield — a squat armored bunker with lockdown louvers (Phase 27). */
+export function buildStormShieldMesh(w: number, d: number, color: number): THREE.Group {
+  const g = new THREE.Group();
+  const frame = mat(C.frame);
+  const armor = mat(color, { flat: true, metal: 0.5, rough: 0.7 });
+  g.add(slab(w, d));
+  // low, heavy body with a sloped armored roof
+  g.add(at(box(w * 0.78, 0.7, d * 0.78, armor), 0, 0.6, 0));
+  const roof = at(box(w * 0.84, 0.14, d * 0.84, mat(0x5a636b, { flat: true, metal: 0.5 })), 0, 1.0, 0);
+  g.add(roof);
+  // lockdown louvers across the front face
+  for (let i = -2; i <= 2; i++) g.add(at(box(0.12, 0.5, 0.06, frame), i * w * 0.16, 0.55, d * 0.4));
+  // corner tie-downs + hazard band
+  for (const [sx, sz] of [[-1, -1], [-1, 1], [1, -1], [1, 1]] as const) {
+    g.add(at(cyl(0.06, 0.08, 0.9, frame, 6), sx * w * 0.34, 0.45, sz * d * 0.34));
+  }
+  g.add(at(stripeBand(Math.min(w, d) * 0.5, 0.05), 0, 0.3, 0));
+  g.add(at(lamp(color), w * 0.3, 1.1, d * 0.28));
+  return g;
+}
+
 /** Fabricator — the drone works: an assembly shed with a bay door, a robotic
  * arm on the roof and an output apron. */
 export function buildFabricatorMesh(w: number, d: number, color: number): THREE.Group {

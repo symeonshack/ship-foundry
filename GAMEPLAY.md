@@ -128,7 +128,14 @@ At the Foundry/Landing Zone specifically, extraction feeds the base stockpile di
 
 **Ambient pressure:** landing is not free. A red **LIFE-SUPPORT DRAIN** badge next to the fuel gauge (top bar) means fuel is draining continuously — this only stops once a **Solar Array**, a **Refinery**, and a **Storage Silo** are all standing at once. The instant all three are up, the drain halts for good (a toast confirms it) — and if you later lose one of them, the drain resumes until it's rebuilt. Getting self-sufficient before the tank runs dry is the opening tension.
 
-**Solar flares** are the base's first real hazard. The first one is guaranteed not long after you land; after that they recur at random intervals. A **☀ FLARE T-Ns** badge (top bar) counts down a short warning once one's inbound — GERTY says something too — and when it hits, every standing structure takes real damage (visible immediately as scorch marks/buckling, same as any other damage). There's nothing to build yet that blocks a flare outright, only **Repair** afterward; hardening against it is on the way.
+**Hazards** are the base's real stakes. Two are guaranteed early so you learn both lessons firsthand, then each recurs at random intervals:
+
+- **Solar flare** — a **☀ FLARE T-Ns** badge counts down a short warning; on impact every standing structure takes damage at once (visible as scorch/buckling). Build an **EM Shield** and, while it stands, flares do *no* damage to the base.
+- **Dust storm** — a **🌪 STORM T-Ns** badge warns, then the storm rolls in: it damages structures on arrival, **blacks out all solar** for the duration (the Power readout says so), and darkens the whole site until it blows over. Build a **Storm Shield** to negate the damage (it can't restore solar — that's what the Nuclear Generator is for).
+
+The two shields protect against *different* hazards and don't cover for each other — an EM Shield is useless in a storm, and a storm can knock down your EM Shield (and vice-versa). Damaged structures are fixed with **Repair**; you don't have to rebuild from scratch.
+
+**The mission.** An **Operation** box in the side panel is your live objective checklist — self-sufficiency, a working Foundry, hazard hardening (both shields), no structures in ruins, and the **high-grade ore quota** (a running total that never drops when you spend the ore). The moment the quota is met, an **accidental discovery** fires: GERTY flags an anomalous signature in the ore that points to a location left off your charts (a log entry lands, and the site is revealed). A couple of objectives — the satellite array and a greenhouse harvest — are listed but greyed out until those systems arrive.
 
 ## Refinery (at the Foundry)
 

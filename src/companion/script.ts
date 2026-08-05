@@ -32,9 +32,13 @@ export const LINES: LineDef[] = [
   { id: 'node-collapse', trigger: 'node-collapsed', maxTimes: 99, cooldownSec: 30, text: 'Deposit collapsed. The moon does that. Nothing personal — there is nobody out here for it to be personal.' },
   { id: 'fuel-low', trigger: 'fuel-low', maxTimes: 99, cooldownSec: 90, mood: 'hint', text: 'Fuel margin is thin. I recommend heading home while “recommend” is still the right word.' },
   { id: 'stranded', trigger: 'stranded', maxTimes: 99, cooldownSec: 60, mood: 'hint', text: 'We do not have the fuel to get home. Options: emergency burn — which means jettisoning the hold — or you make fuel appear. I’ll wait.' },
-  { id: 'flare-warning', trigger: 'flare-warning', maxTimes: 99, cooldownSec: 20, mood: 'hint', text: 'Solar flare inbound. Anything standing unshielded is about to feel it — there is nothing to build yet that stops this, only repairs after.' },
-  { id: 'flare-strike', trigger: 'flare-strike', maxTimes: 99, cooldownSec: 20, text: 'Flare impact logged. Structural damage across the site — nothing fatal this time. Repair when you can afford to.' },
-  { id: 'flare-miss', trigger: 'flare-miss', maxTimes: 99, cooldownSec: 20, mood: 'hint', text: 'Flare passed with nothing standing to hit. Cheap lesson, that one.' },
+  { id: 'flare-warning', trigger: 'flare-warning', maxTimes: 99, cooldownSec: 20, mood: 'hint', text: 'Solar flare inbound. Anything standing unshielded is about to feel it. An EM Shield turns a flare aside completely — worth building before the next one.' },
+  { id: 'flare-strike', trigger: 'flare-strike', maxTimes: 99, cooldownSec: 20, text: 'Flare impact logged. Structural damage across the site — nothing fatal this time. Repair when you can afford to; shield before the next.' },
+  { id: 'flare-miss', trigger: 'flare-miss', maxTimes: 99, cooldownSec: 20, mood: 'hint', text: 'Flare deflected — the EM Shield earned its keep. That is what hardening looks like.' },
+  { id: 'storm-warning', trigger: 'storm-warning', maxTimes: 99, cooldownSec: 20, mood: 'hint', text: 'Dust storm building on the sensors. Different beast from a flare — it will black out the solar arrays and grind on anything unhardened. A Storm Shield is the answer, not the EM one.' },
+  { id: 'storm-strike', trigger: 'storm-strike', maxTimes: 99, cooldownSec: 20, text: 'Storm front hit. Damage logged and the arrays are dark until the dust settles. This is the moment a nuclear generator stops being optional.' },
+  { id: 'storm-miss', trigger: 'storm-miss', maxTimes: 99, cooldownSec: 20, mood: 'hint', text: 'Storm rolled through, shielded. Still no solar until it clears — but nothing broke. Good.' },
+  { id: 'mission-discovery', trigger: 'mission-discovery', priority: 5, mood: 'hint', setFlags: [FLAGS.MISSION_DOUBT], text: 'The high-grade ore just told me something the briefing did not. There is a signature in it that traces to a location nobody handed us coordinates for. I have logged it. I would very much like to know who left it off the chart. [PLACEHOLDER — discovery beat]' },
 
   // ---- flight ----
   { id: 'first-flight', trigger: 'flight', priority: 2, mood: 'hint', text: 'You have the stick. Drift is your own cargo arrangement talking back — counter it, and mind the throttle. I’ll handle everything except the flying.' },

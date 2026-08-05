@@ -91,6 +91,9 @@ export class Gerty {
     bus.on('hazard:warning', ({ hazard }) => this.notify(`hazard:${hazard}`));
     bus.on('flare:warning', () => this.notify('flare-warning'));
     bus.on('flare:strike', ({ hits }) => this.notify(hits > 0 ? 'flare-strike' : 'flare-miss'));
+    bus.on('storm:warning', () => this.notify('storm-warning'));
+    bus.on('storm:begin', ({ hits }) => this.notify(hits > 0 ? 'storm-strike' : 'storm-miss'));
+    bus.on('mission:discovery', () => this.notify('mission-discovery'));
     bus.on('encounter:turn', ({ actor }) => {
       if (actor === 'collaborator') this.notify('encounter-response');
     });

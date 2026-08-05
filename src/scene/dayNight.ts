@@ -24,6 +24,8 @@ const DISC_HIGH = new THREE.Color(0xfff2c0);
 const DISC_LOW = new THREE.Color(0xff7a30);
 const GLOW_HIGH = new THREE.Color(0xffcf66);
 const GLOW_LOW = new THREE.Color(0xff5f28);
+const STORM_SKY = new THREE.Color(0x6b4a2a);
+const STORM_AMB = new THREE.Color(0x3a2c1c);
 
 export class DayNightSky {
   readonly sunLight = new THREE.DirectionalLight(0xffffff, 2.4);
@@ -60,7 +62,9 @@ export class DayNightSky {
     this.daySky.set(color);
   }
 
-  update(t: number): void {
+  /** `storm` 0..1 blends in a dust-storm look: brown, dimmed, sun/stars hidden */
+  update(t: number, storm = 0): void {
+    const st = Math.max(0, Math.min(1, storm));
     const ang = dayPhase(t) * Math.PI * 2;
     const elev = Math.cos(ang); // +1 noon, 0 dawn/dusk, -1 midnight
     const ew = Math.sin(ang); // +west at dusk, -east at dawn
@@ -75,32 +79,34 @@ export class DayNightSky {
     const lowness = 1 - Math.min(1, dayAmt / HORIZON); // 1 at/under horizon → 0 at high noon
     const night = 1 - dayAmt;
 
-    // directional sun: dark below the horizon, warm and low near it
-    this.sunLight.intensity = 2.7 * dayAmt;
-    this.sunLight.color.copy(SUN_WHITE).lerp(SUN_WARM, lowness);
-    // ambient stays high enough to keep working after dark (for now)
-    this.ambient.color.copy(DAY_AMB).lerp(NIGHT_AMB, night);
-    this.ambient.intensity = 1.9 - night * 0.75;
+    // directional sun: dark below the horizon, warm and low near it; the storm
+    // chokes it off
+    this.sunLight.intensity = 2.7 * dayAmt * (1 - st * 0.85);
+    this.sunLight.color.copy(SUN_WHITE).lerp(SUN_WARM, Math.max(lowness, st * 0.6));
+    // ambient stays high enough to keep working after dark (for now); a storm
+    // dims it toward a murky brown
+    this.ambient.color.copy(DAY_AMB).lerp(NIGHT_AMB, night).lerp(STORM_AMB, st);
+    this.ambient.intensity = (1.9 - night * 0.75) * (1 - st * 0.35);
 
-    // sky + fog recolour
-    const sky = this.skyColor(elev);
+    // sky + fog recolour — brown out under a storm
+    const sky = this.skyColor(elev).lerp(STORM_SKY, st);
     if (this.scene.fog) (this.scene.fog as THREE.Fog).color.copy(sky);
     if (this.scene.background instanceof THREE.Color) this.scene.background.copy(sky);
 
-    // sun disc / glow appearance + horizon visibility
+    // sun disc / glow appearance + horizon visibility (hidden in a storm)
     (this.sunDisc.material as THREE.MeshBasicMaterial).color.copy(DISC_HIGH).lerp(DISC_LOW, lowness);
     const gm = this.sunGlow.material as THREE.MeshBasicMaterial;
     gm.color.copy(GLOW_HIGH).lerp(GLOW_LOW, lowness);
-    gm.opacity = 0.12 + lowness * 0.35;
-    this.sunDisc.visible = elev > -0.06;
-    this.sunGlow.visible = elev > -0.06;
-    this.moon.visible = elev < 0.12;
+    gm.opacity = (0.12 + lowness * 0.35) * (1 - st);
+    this.sunDisc.visible = elev > -0.06 && st < 0.5;
+    this.sunGlow.visible = elev > -0.06 && st < 0.5;
+    this.moon.visible = elev < 0.12 && st < 0.5;
 
-    // stars fade in after dark
+    // stars fade in after dark, gone in a storm
     if (this.stars) {
       const sm = this.stars.material as THREE.PointsMaterial;
       sm.transparent = true;
-      sm.opacity = Math.min(1, Math.max(0, night * 1.5 - 0.25));
+      sm.opacity = Math.min(1, Math.max(0, night * 1.5 - 0.25)) * (1 - st);
     }
   }
 

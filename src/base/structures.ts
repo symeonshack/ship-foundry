@@ -29,9 +29,11 @@ export type StructureId =
   | 'greenhouse'
   | 'foundry'
   | 'nuclearGenerator'
-  | 'launchPad';
+  | 'launchPad'
+  | 'emShield'
+  | 'stormShield';
 
-export type StructureCategory = 'power' | 'production' | 'storage' | 'food' | 'launch';
+export type StructureCategory = 'power' | 'production' | 'storage' | 'food' | 'launch' | 'defense';
 
 export interface StructureDef {
   id: StructureId;
@@ -203,6 +205,30 @@ export const STRUCTURES: Record<StructureId, StructureDef> = {
     maxHp: 100,
     prereq: ['foundry'],
     category: 'launch',
+  },
+  emShield: {
+    id: 'emShield',
+    name: 'EM Shield',
+    desc: 'A field emitter that turns a solar flare aside — while it stands, flares do no damage to the base. Useless against a dust storm.',
+    footprint: { w: 2.5, d: 2.5 },
+    cost: { alloy: 5, ceramic: 3 },
+    buildTimeSec: 40,
+    maxHp: 60,
+    prereq: ['powerRelay'],
+    powerDemand: 3,
+    category: 'defense',
+  },
+  stormShield: {
+    id: 'stormShield',
+    name: 'Storm Shield',
+    desc: 'Armored lockdown baffles that ride out a dust storm — while it stands, storms do no damage to the base. No help against a flare.',
+    footprint: { w: 2.5, d: 2.5 },
+    cost: { alloy: 4, ceramic: 5 },
+    buildTimeSec: 40,
+    maxHp: 70,
+    prereq: ['powerRelay'],
+    powerDemand: 2,
+    category: 'defense',
   },
 };
 

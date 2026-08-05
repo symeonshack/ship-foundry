@@ -36,6 +36,9 @@ export const FLAGS = {
   FIRST_BUILD: 'progress.firstBuild',
   ANOMALY_SCANNED: 'progress.anomalyScanned',
   ANOMALY_VISITED: 'progress.anomalyVisited',
+  /** Landing Zone mission: the high-grade ore quota has been met (Phase 28/29),
+   * firing the one-time accidental-discovery event that reveals a new site */
+  QUOTA_MET: 'mission.quotaMet',
   SIGNAL_SCANNED: 'progress.signalScanned',
   ENCOUNTER_STARTED: 'encounter.started',
   ENCOUNTER_SOLVED: 'encounter.solved',

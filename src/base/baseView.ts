@@ -21,11 +21,13 @@ import type { ChunkedTerrain } from '../terrain/chunkManager';
 import type { Collider } from '../interior/playerController';
 import {
   buildDroneMesh,
+  buildEmShieldMesh,
   buildFabricatorMesh,
   buildFoundryStructureMesh,
   buildGreenhouseMesh,
   buildLaunchPadMesh,
   buildNuclearGeneratorMesh,
+  buildStormShieldMesh,
   buildRallyFlag,
   buildRefineryMesh,
   buildRelayMesh,
@@ -56,6 +58,8 @@ import {
 } from './structures';
 import { startRepair } from './baseSim';
 import { canClean, hasPowerGrid, isGeneratorRunning, netPower, solarFactor } from './power';
+import { stormActive } from './hazards';
+import { missionObjectives } from './mission';
 import { FLAGS } from '../core/flags';
 import { canPlace, footprintAt } from './placement';
 import { SelectionController, uidsInRect, type Px } from './selection';
@@ -76,6 +80,8 @@ const FINISHED_BUILDERS: Partial<Record<StructureId, (w: number, d: number, colo
   fabricator: buildFabricatorMesh,
   greenhouse: buildGreenhouseMesh,
   soilProcessor: buildSoilProcessorMesh,
+  emShield: buildEmShieldMesh,
+  stormShield: buildStormShieldMesh,
 };
 
 /** stable per-wreck seed so a given pile of rubble looks the same every rebuild */
@@ -92,6 +98,7 @@ const CATEGORY_COLORS: Record<StructureCategory, number> = {
   storage: 0x8fb7c9,
   food: 0x7dffa8,
   launch: 0xc98aff,
+  defense: 0x6ad0e0,
 };
 
 /** drags shorter than this are clicks — let the click path handle them */
@@ -708,10 +715,36 @@ export class BaseView {
       pwr.appendChild(cycle);
       this.panelUpdaters.push(() => {
         const t = store.state.playSeconds;
-        const net = netPower(store.state.base.structures, t);
+        const storming = stormActive(store.state.base, t);
+        const net = netPower(store.state.base.structures, t, storming);
         netVal.innerHTML = `Net <span style="color:${net >= 0 ? 'var(--green)' : 'var(--red)'}">${net >= 0 ? '+' : ''}${net.toFixed(0)}</span> power`;
         const f = solarFactor(t);
-        cycle.textContent = f > 0.02 ? `☀ Daylight · solar ${Math.round(f * 100)}%` : '☾ Night · solar arrays idle';
+        cycle.textContent = storming ? '🌪 Dust storm · solar blacked out' : f > 0.02 ? `☀ Daylight · solar ${Math.round(f * 100)}%` : '☾ Night · solar arrays idle';
+      });
+    }
+
+    // operation status — the mission checklist (Phase 30), live-updated
+    {
+      const opBox = box('Operation');
+      const rows = missionObjectives(store).map((o) => {
+        const row = el('div', 'row');
+        const mark = el('span', 'sub', '');
+        mark.style.width = '14px';
+        const label = el('span', 'grow', '');
+        label.style.fontSize = '12px';
+        row.append(mark, label);
+        if (!o.available) row.style.opacity = '0.45';
+        opBox.appendChild(row);
+        return { mark, label };
+      });
+      this.panelUpdaters.push(() => {
+        missionObjectives(store).forEach((o, i) => {
+          const r = rows[i];
+          if (!r) return;
+          r.mark.textContent = !o.available ? '·' : o.done ? '✓' : '○';
+          r.mark.style.color = o.done ? 'var(--green)' : o.available ? 'var(--amber)' : 'var(--border)';
+          r.label.textContent = o.label;
+        });
       });
     }
 

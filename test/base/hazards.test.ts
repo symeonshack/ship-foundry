@@ -1,11 +1,23 @@
 import { describe, expect, it } from 'vitest';
 import { EventBus } from '../../src/core/events';
 import { createNewGame, GameStore } from '../../src/core/state';
-import { tickFlare } from '../../src/base/hazards';
+import { stormActive, tickFlare, tickStorm } from '../../src/base/hazards';
 import { STRUCTURES, type StructureInstance } from '../../src/base/structures';
 import { BALANCE } from '../../src/config/balance';
 
 const cfg = BALANCE.landingZone.hazards.flare;
+const stormCfg = BALANCE.landingZone.hazards.storm;
+
+const shield = (defId: 'emShield' | 'stormShield'): StructureInstance => ({
+  uid: `shield-${defId}`,
+  defId,
+  x: 0,
+  z: 0,
+  rotY: 0,
+  hp: STRUCTURES[defId].maxHp,
+  buildProgress: 1,
+  status: 'active',
+});
 
 const active = (over: Partial<StructureInstance> = {}): StructureInstance => ({
   uid: 'b1',
@@ -91,5 +103,79 @@ describe('tickFlare', () => {
     const gap = store.state.base.nextFlareAt - store.state.playSeconds;
     expect(gap).toBeGreaterThanOrEqual(cfg.minInterval);
     expect(gap).toBeLessThanOrEqual(cfg.maxInterval);
+  });
+
+  it('an active EM Shield turns a flare to nothing; a Storm Shield does not', () => {
+    const store = new GameStore(new EventBus(), createNewGame());
+    const solar = active({ uid: 'p1' });
+    store.state.base.structures.push(solar, shield('emShield'));
+    store.state.playSeconds = cfg.firstAt;
+    tickFlare(store, 0.1);
+    store.state.playSeconds += cfg.warningSec;
+    const strike = tickFlare(store, 0.1);
+    expect(strike?.type).toBe('strike');
+    if (strike?.type !== 'strike') throw new Error('expected a strike');
+    expect(strike.hits).toBe(0); // shielded
+    expect(solar.hp).toBe(STRUCTURES.solarArray.maxHp); // untouched
+
+    // swap the EM shield for a storm shield — no protection against a flare
+    store.state.base.structures = [active({ uid: 'p2' }), shield('stormShield')];
+    store.state.playSeconds = store.state.base.nextFlareAt;
+    tickFlare(store, 0.1);
+    store.state.playSeconds += cfg.warningSec;
+    const s2 = tickFlare(store, 0.1);
+    if (s2?.type !== 'strike') throw new Error('expected a strike');
+    expect(s2.hits).toBe(2); // both the solar and the (wrong) shield take it
+  });
+});
+
+describe('tickStorm', () => {
+  it('runs warning → onset (damage + active window) → all-clear, then reschedules', () => {
+    const store = new GameStore(new EventBus(), createNewGame());
+    const solar = active({ uid: 'p1' });
+    store.state.base.structures.push(solar);
+
+    store.state.playSeconds = stormCfg.firstAt - 1;
+    expect(tickStorm(store, 0.1)).toBeNull();
+
+    store.state.playSeconds = stormCfg.firstAt;
+    expect(tickStorm(store, 0.1)).toEqual({ type: 'warning', countdownSec: stormCfg.warningSec });
+    expect(stormActive(store.state.base, store.state.playSeconds)).toBe(false);
+
+    store.state.playSeconds += stormCfg.warningSec;
+    const begin = tickStorm(store, 0.1);
+    expect(begin?.type).toBe('begin');
+    if (begin?.type !== 'begin') throw new Error('expected onset');
+    expect(begin.hits).toBe(1);
+    expect(solar.hp).toBeCloseTo(STRUCTURES.solarArray.maxHp * (1 - stormCfg.damageFraction));
+    expect(stormActive(store.state.base, store.state.playSeconds)).toBe(true);
+
+    // still blowing — no repeat damage mid-storm
+    store.state.playSeconds += stormCfg.durationSec - 1;
+    expect(tickStorm(store, 0.1)).toBeNull();
+    expect(stormActive(store.state.base, store.state.playSeconds)).toBe(true);
+
+    // blows out
+    store.state.playSeconds += 1;
+    expect(tickStorm(store, 0.1)).toEqual({ type: 'end' });
+    expect(store.state.base.stormActiveUntil).toBeNull();
+    const gap = store.state.base.nextStormAt - store.state.playSeconds;
+    expect(gap).toBeGreaterThanOrEqual(stormCfg.minInterval);
+    expect(gap).toBeLessThanOrEqual(stormCfg.maxInterval);
+  });
+
+  it('an active Storm Shield turns a storm to nothing', () => {
+    const store = new GameStore(new EventBus(), createNewGame());
+    const solar = active({ uid: 'p1' });
+    store.state.base.structures.push(solar, shield('stormShield'));
+    store.state.playSeconds = stormCfg.firstAt;
+    tickStorm(store, 0.1); // warning
+    store.state.playSeconds += stormCfg.warningSec;
+    const begin = tickStorm(store, 0.1);
+    if (begin?.type !== 'begin') throw new Error('expected onset');
+    expect(begin.hits).toBe(0);
+    expect(solar.hp).toBe(STRUCTURES.solarArray.maxHp);
+    // ...but the storm still blows (solar blackout is not prevented by the shield)
+    expect(stormActive(store.state.base, store.state.playSeconds)).toBe(true);
   });
 });

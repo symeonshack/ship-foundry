@@ -850,7 +850,10 @@ export class SurfaceScreen implements GameScreen {
   update(dt: number): void {
     this.t += dt;
     this.excursion += dt;
-    this.dayNight.update(this.ctx.store.state.playSeconds);
+    // dust storm darkens/browns the sky, but only at the home Landing Zone
+    const b = this.ctx.store.state.base;
+    const storming = this.def.special === 'home' && b.stormActiveUntil !== null && this.ctx.store.state.playSeconds < b.stormActiveUntil;
+    this.dayNight.update(this.ctx.store.state.playSeconds, storming ? 1 : 0);
     if (this.mode === 'command') {
       this.keyboardPan(dt);
       this.controls.update();

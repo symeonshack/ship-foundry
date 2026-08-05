@@ -126,7 +126,23 @@ bus.on('flare:warning', ({ countdownSec }) => {
   toast(`⚠ Solar flare inbound — impact in ~${countdownSec}s`, 'warn');
 });
 bus.on('flare:strike', ({ hits }) => {
-  toast(hits > 0 ? `Solar flare hit — ${hits} structure${hits === 1 ? '' : 's'} damaged` : 'Solar flare passed over — nothing exposed to it', hits > 0 ? 'bad' : 'info');
+  toast(hits > 0 ? `Solar flare hit — ${hits} structure${hits === 1 ? '' : 's'} damaged` : 'Solar flare deflected — the base rode it out', hits > 0 ? 'bad' : 'good');
+  saveGame(store.state);
+});
+bus.on('storm:warning', ({ countdownSec }) => {
+  toast(`⚠ Dust storm inbound — arrival in ~${countdownSec}s`, 'warn');
+});
+bus.on('storm:begin', ({ hits }) => {
+  toast(hits > 0 ? `Dust storm hit — ${hits} structure${hits === 1 ? '' : 's'} damaged, solar blacked out` : 'Dust storm rolled in — shielded, solar blacked out until it passes', hits > 0 ? 'bad' : 'warn');
+  saveGame(store.state);
+});
+bus.on('storm:end', () => {
+  toast('Dust storm has passed — solar back on stream', 'good');
+});
+bus.on('mission:discovery', () => {
+  toast('Anomalous signature in the high-grade ore — GERTY flagged a new location', 'good');
+  log.insert('anomaly-discovery');
+  pushCheckpoint(store.state, 'Anomaly located');
   saveGame(store.state);
 });
 window.addEventListener('beforeunload', () => saveGame(store.state));
@@ -156,18 +172,37 @@ manager.start();
 {
   const raw = store.state as { base?: GameState['base'] };
   if (!raw.base) {
-    raw.base = { structures: [], drones: [], rallyPoint: null, nextFlareAt: BALANCE.landingZone.hazards.flare.firstAt, flareWarningUntil: null };
+    raw.base = {
+      structures: [], drones: [], rallyPoint: null,
+      nextFlareAt: BALANCE.landingZone.hazards.flare.firstAt, flareWarningUntil: null,
+      nextStormAt: BALANCE.landingZone.hazards.storm.firstAt, stormWarningUntil: null, stormActiveUntil: null,
+    };
   }
 }
 
-// saves from before the flare hazard (Phase 25) existed — schedule the first
-// one fresh rather than backdating it against however long the save has run
+// saves from before the flare/storm hazards (Phase 25/26) existed — schedule
+// the first of each fresh rather than backdating against however long the save ran
 {
-  const base = store.state.base as { nextFlareAt?: number; flareWarningUntil?: number | null };
+  const now = store.state.playSeconds;
+  const base = store.state.base as {
+    nextFlareAt?: number; flareWarningUntil?: number | null;
+    nextStormAt?: number; stormWarningUntil?: number | null; stormActiveUntil?: number | null;
+  };
   if (typeof base.nextFlareAt !== 'number') {
-    base.nextFlareAt = store.state.playSeconds + BALANCE.landingZone.hazards.flare.firstAt;
+    base.nextFlareAt = now + BALANCE.landingZone.hazards.flare.firstAt;
     base.flareWarningUntil = null;
   }
+  if (typeof base.nextStormAt !== 'number') {
+    base.nextStormAt = now + BALANCE.landingZone.hazards.storm.firstAt;
+    base.stormWarningUntil = null;
+    base.stormActiveUntil = null;
+  }
+}
+
+// saves from before the mission-quota tracker (Phase 28) existed
+{
+  const raw = store.state as { mission?: GameState['mission'] };
+  if (!raw.mission) raw.mission = { oreHighBanked: 0 };
 }
 
 // saves from before the orbit/ground split default to being aboard the ship

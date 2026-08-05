@@ -100,12 +100,12 @@ export function tickNuclear(inst: StructureInstance, stock: { isotope: number },
 /** a single active structure's live power output (solar derated by day/night
  * + dust and offline while cleaning; nuclear flat while isotopes hold out;
  * other producers are flat) */
-export function structureOutput(inst: StructureInstance, t: number): number {
+export function structureOutput(inst: StructureInstance, t: number, stormActive = false): number {
   if (inst.status !== 'active') return 0;
   const supply = STRUCTURES[inst.defId].powerSupply ?? 0;
   if (supply === 0) return 0;
   if (inst.defId === 'solarArray') {
-    if (inst.cleaning) return 0;
+    if (inst.cleaning || stormActive) return 0; // a dust storm blots out the sun entirely
     return supply * solarFactor(t) * dustDerate(inst.dustLevel ?? 0);
   }
   if (inst.defId === 'nuclearGenerator') {
@@ -115,12 +115,12 @@ export function structureOutput(inst: StructureInstance, t: number): number {
 }
 
 /** live net power at the base: total supply minus total demand */
-export function netPower(structures: readonly StructureInstance[], t: number): number {
+export function netPower(structures: readonly StructureInstance[], t: number, stormActive = false): number {
   let supply = 0;
   let demand = 0;
   for (const s of structures) {
     if (s.status !== 'active') continue;
-    supply += structureOutput(s, t);
+    supply += structureOutput(s, t, stormActive);
     demand += STRUCTURES[s.defId].powerDemand ?? 0;
   }
   return supply - demand;

@@ -41,6 +41,12 @@ export interface GameEvents {
   /** solar flare hazard escalation (Phase 25): a short lead-time warning, then the strike */
   'flare:warning': { countdownSec: number };
   'flare:strike': { hits: number };
+  /** dust storm hazard (Phase 26): warning, onset (damage), and the all-clear */
+  'storm:warning': { countdownSec: number };
+  'storm:begin': { hits: number };
+  'storm:end': Record<string, never>;
+  /** mission arc (Phase 29): high-grade ore quota crossed → a location revealed */
+  'mission:discovery': { poiId: string };
 
   'refine:complete': { recipeId: string; output: RefinedResourceId };
   'build:placed': { partId: PartId };
