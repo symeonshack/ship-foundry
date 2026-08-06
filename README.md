@@ -1,6 +1,6 @@
 # Ship Foundry (v1 MVP)
 
-A non-combat sci-fi exploration and building game. Scan, mine, refine, and build your way outward through one star system — tension comes from radiation, cold, collapsing terrain, hazards, and fuel math, never from a weapon. `landing-zone-plan.md` is the authoritative build plan; `AGENTS.md` onboards contributors (including how phase tracking works). The older `*-build-spec.md` files are historical design reference.
+A non-combat sci-fi exploration and building game. Scan, mine, refine, and build your way outward through one star system — tension comes from radiation, cold, collapsing terrain, hazards, and fuel math, never from a weapon. `IMPLEMENTED.md` catalogs everything that's built; `ROADMAP.md` covers what's still planned or tabled; `GAMEPLAY.md` is the player-facing guide; `AGENTS.md` onboards contributors (including how phase tracking works).
 
 ## Run
 

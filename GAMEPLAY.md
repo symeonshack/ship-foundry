@@ -1,6 +1,6 @@
 # Ship Foundry — Gameplay Guide
 
-Everything you need to actually play: controls, what each screen does, and the dev-only tools. For the design/story behind all this, see `ship-foundry-build-spec.md` and `mining-operations-build-spec.md`.
+Everything you need to actually play: controls, what each screen does, and the dev-only tools. For the design/story behind all this, see `IMPLEMENTED.md` (what's built) and `ROADMAP.md` (what's planned).
 
 ## Aboard ship (first-person hub)
 

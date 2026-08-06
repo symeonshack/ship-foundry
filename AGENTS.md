@@ -10,20 +10,26 @@ No weapons, no combat, ever — tension comes from environment, scarcity, and
 time pressure. See `README.md` for run/test commands and `GAMEPLAY.md` for
 what's actually playable right now (controls, screens, dev tools).
 
-## The one doc that matters right now
+## The two docs that matter
 
-**`landing-zone-plan.md` is the single authoritative build plan.** It says so
-itself. The older spec files still in the repo (`ship-foundry-build-spec.md`,
-`mining-operations-build-spec.md`, `stage-0-foundry-establishment-template.md`,
-`operation-site-1-template.md`) are historical reference only, and **their
-"Phase N" numbering does not match reality.** Do not use numbers from those
-files to figure out where the project is. Use the method below instead.
+The build specs have been consolidated into exactly two files — read both:
+
+- **`IMPLEMENTED.md`** — the catalog of everything that's built: what the game
+  is, every system, the Landing Zone playthrough, and the phase index.
+- **`ROADMAP.md`** — everything *not* built: tabled systems, future arcs,
+  deferred features, and the settled-but-unwritten narrative design.
+
+The six old spec files (`ship-foundry-build-spec.md`,
+`mining-operations-build-spec.md`, `landing-zone-plan.md`,
+`stage-0-foundry-establishment-template.md`, `operation-site-1-template.md`,
+`landing-zone-gameplay-script.md`) have been **deleted** — their contents live
+in the two docs above. Their old "Phase N" numbering never matched reality; do
+not resurrect it. Use the method below to find current status.
 
 ## How phase tracking actually works here
 
-There's no separate status doc. The plan is built one feature at a time, in
-the order listed in `landing-zone-plan.md`, and each feature gets a
-sequential phase number that lives in two places:
+There's no separate status doc. The plan is built one feature at a time, and
+each feature gets a sequential phase number that lives in two places:
 
 1. **Code comments**, e.g. `/** Landing Zone power & supply (Landing Zone
    plan, Phase 12+). */` — grep the codebase for `Phase \d` to see what's
@@ -49,7 +55,7 @@ visual or gameplay change drive the real app in headless Chromium (the
 `verify` skill / a Playwright script against `window.__game`) and confirm
 zero console errors before committing.
 
-## Working rules (from `landing-zone-plan.md`, still binding)
+## Working rules (still binding)
 
 - One feature/phase at a time. Confirm it actually works before starting
   the next one.
@@ -57,13 +63,12 @@ zero console errors before committing.
   in `src/config/balance.ts` — never hardcoded in game logic.
 - Geometry is procedural/primitive shapes only — no hand-authored 3D assets.
 - If a requirement is ambiguous, stop and ask rather than guessing.
-- Don't build anything listed under "Explicitly not in scope right now" at
-  the bottom of `landing-zone-plan.md` unless asked.
+- Don't build anything in `ROADMAP.md` (tabled/future items) unless asked.
 
 ## Two narrative questions stay data-only
 
 GERTY's relationship to the rogue AI, and the collaborator beings' true
-nature, are intentionally undecided (see `ship-foundry-build-spec.md`
-Narrative Hooks). Don't lock in an answer in code/dialogue — keep any
-related content driven by data/flags (`src/core/flags.ts`,
-`src/companion/script.ts`) so the answer can still be chosen later.
+nature, are intentionally undecided (see the Narrative section of
+`ROADMAP.md`). Don't lock in an answer in code/dialogue — keep any related
+content driven by data/flags (`src/core/flags.ts`, `src/companion/script.ts`)
+so the answer can still be chosen later.
